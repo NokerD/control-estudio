@@ -1,9 +1,0 @@
-streamlit
-gspread
-requests
-google-auth
-pytz
-google-api-python-client
-feedparser
-bs4
-deep_translator
