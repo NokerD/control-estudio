@@ -22,10 +22,10 @@ except Exception:
 def cargar_estilos():
     st.markdown("""
         <style>
-        /* Estilos Base */
+        /* Global */
         html, body, [class*="css"] { font-size: 18px !important; }
-        
-        /* TARJETAS (Modo Oscuro por defecto) */
+
+        /* --- MODO OSCURO (Default) --- */
         .materia-card, .resumen-card {
             background-color: #262730 !important;
             border: 1px solid #464b5c !important;
@@ -34,7 +34,7 @@ def cargar_estilos():
             margin-bottom: 20px;
             box-shadow: 0 4px 6px rgba(0,0,0,0.3);
         }
-        .materia-title, .text-main { color: #ffffff !important; }
+        .materia-title, .text-main { color: #ffffff !important; font-weight: bold; }
         .text-label { color: #aaaaaa !important; }
         .materia-time { 
             font-size: 1.6rem; 
@@ -43,23 +43,25 @@ def cargar_estilos():
             font-family: 'Courier New', monospace; 
         }
 
-        /* MODO CLARO (Se activa automáticamente) */
+        /* --- MODO CLARO (Override) --- */
         @media (prefers-color-scheme: light) {
             .materia-card, .resumen-card {
                 background-color: #ffffff !important;
                 border: 1px solid #dddddd !important;
-                box-shadow: 0 2px 5px rgba(0,0,0,0.1) !important;
+                box-shadow: 0 2px 8px rgba(0,0,0,0.1) !important;
             }
             .materia-title, .text-main { 
                 color: #262730 !important; 
             }
             .text-label { 
-                color: #666666 !important; 
+                color: #555555 !important; 
             }
-            /* Fondo de la barra de progreso en modo claro */
-            .progress-bg { background-color: #eeeeee !important; }
+            .progress-bg { 
+                background-color: #f0f0f0 !important; 
+            }
         }
 
+        /* Auxiliares */
         .status-badge { display: inline-block; padding: 5px 10px; border-radius: 12px; font-size: 0.9rem; font-weight: bold; margin-bottom: 10px; }
         .status-active { background-color: rgba(0, 230, 118, 0.2); color: #00e676; border: 1px solid #00e676; }
         div.stButton > button { font-size: 1.2rem !important; font-weight: bold !important; border-radius: 12px !important; }
@@ -716,7 +718,7 @@ def main():
         badge_html = f'<div class="status-badge status-active">🟢 Estudiando...</div>' if en_curso else ''
         html_card = f"""
             <div class="materia-card">
-                <div class="materia-title">{materia}</div>
+                <div class="materia-title" style="margin-bottom: 5px;">{materia}</div>
                 {badge_html}
                 <div class="materia-time">{tiempo_total_hms}</div>
             </div>
