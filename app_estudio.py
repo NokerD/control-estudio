@@ -27,8 +27,8 @@ def cargar_estilos():
         h2 { font-size: 2rem !important; }
         h3 { font-size: 1.5rem !important; }
 
-        /* Estilo de la tarjeta */
-        .materia-card {
+        /* --- TARJETAS (MODO OSCURO POR DEFECTO) --- */
+        .materia-card, .resumen-card {
             background-color: #262730;
             border: 1px solid #464b5c;
             padding: 20px;
@@ -36,9 +36,8 @@ def cargar_estilos():
             margin-bottom: 20px;
             box-shadow: 0 4px 6px rgba(0,0,0,0.3);
         }
-        .materia-title { font-size: 1.4rem; font-weight: bold; color: #ffffff; margin-bottom: 5px; }
         
-        /* EL TIEMPO */
+        .materia-title { font-size: 1.4rem; font-weight: bold; color: #ffffff; margin-bottom: 5px; }
         .materia-time { 
             font-size: 1.6rem; 
             font-weight: bold; 
@@ -47,13 +46,23 @@ def cargar_estilos():
             margin-bottom: 15px; 
         }
 
+        /* --- MODO CLARO (OVERRIDE) --- */
+        @media (prefers-color-scheme: light) {
+            .materia-card, .resumen-card {
+                background-color: #f0f2f6;
+                border: 1px solid #d1d5db;
+                box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            }
+            .materia-title { color: #31333F !important; }
+            .text-label { color: #555 !important; }
+            .text-main { color: #1e1e1e !important; }
+            .resumen-card { background-color: #ffffff !important; }
+        }
+
         .status-badge { display: inline-block; padding: 5px 10px; border-radius: 12px; font-size: 0.9rem; font-weight: bold; margin-bottom: 10px; }
         .status-active { background-color: rgba(0, 230, 118, 0.2); color: #00e676; border: 1px solid #00e676; }
 
         div.stButton > button { font-size: 1.2rem !important; font-weight: bold !important; border-radius: 12px !important; }
-        .btn-grande div[data-testid="stButton"] button { height: 3.5rem !important; }
-
-        div[data-testid="stColumns"] { align-items: flex-start !important; }
         </style>
     """, unsafe_allow_html=True)
 
@@ -649,17 +658,17 @@ def main():
     # --- Actualizar Placeholder Global ---
     with st.container():
         st.markdown(f"""
-            <div style="background-color: #1e1e1e; padding: 15px; border-radius: 10px; margin-bottom: 20px;">
+            <div class="resumen-card">
                 <div style="display:flex; justify-content:space-between; align-items:center;">
-                    <div style="font-size: 1.2rem; color: #aaa;">Hoy</div>
+                    <div class="text-label" style="font-size: 1.2rem; color: #aaa;">Hoy</div>
                     <div style="display:flex; align-items:center; gap:6px; font-size:0.9rem;">
-                        <span style="color:#aaa;">Deuda:</span>
+                        <span class="text-label" style="color:#aaa;">Deuda:</span>
                         <span style="color:{pozo_color};">
                             {pozo_html}
                         </span>
                     </div>
                 </div>
-                <div style="width: 100%; font-size: 2.2rem; font-weight: bold; color: #fff; line-height: 1;">{total_html}</div>
+                <div class="text-main" style="width: 100%; font-size: 2.2rem; font-weight: bold; color: #fff; line-height: 1;">{total_html}</div>
                 <div style="width:100%; background-color:#333; border-radius:10px; height:12px; margin: 15px 0;">
                     <div style="width:{progreso_pct}%; background-color:{color_bar}; height:100%; border-radius:10px; transition: width 0.5s;"></div>
                 </div>
