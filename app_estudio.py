@@ -22,46 +22,46 @@ except Exception:
 def cargar_estilos():
     st.markdown("""
         <style>
+        /* Estilos Base */
         html, body, [class*="css"] { font-size: 18px !important; }
-        h1 { font-size: 2.5rem !important; }
-        h2 { font-size: 2rem !important; }
-        h3 { font-size: 1.5rem !important; }
-
-        /* --- TARJETAS (MODO OSCURO POR DEFECTO) --- */
+        
+        /* TARJETAS (Modo Oscuro por defecto) */
         .materia-card, .resumen-card {
-            background-color: #262730;
-            border: 1px solid #464b5c;
+            background-color: #262730 !important;
+            border: 1px solid #464b5c !important;
             padding: 20px;
             border-radius: 15px;
             margin-bottom: 20px;
             box-shadow: 0 4px 6px rgba(0,0,0,0.3);
         }
-        
-        .materia-title { font-size: 1.4rem; font-weight: bold; color: #ffffff; margin-bottom: 5px; }
+        .materia-title, .text-main { color: #ffffff !important; }
+        .text-label { color: #aaaaaa !important; }
         .materia-time { 
             font-size: 1.6rem; 
             font-weight: bold; 
-            color: #00e676; 
+            color: #00e676 !important; 
             font-family: 'Courier New', monospace; 
-            margin-bottom: 15px; 
         }
 
-        /* --- MODO CLARO (OVERRIDE) --- */
+        /* MODO CLARO (Se activa automáticamente) */
         @media (prefers-color-scheme: light) {
             .materia-card, .resumen-card {
-                background-color: #f0f2f6;
-                border: 1px solid #d1d5db;
-                box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+                background-color: #ffffff !important;
+                border: 1px solid #dddddd !important;
+                box-shadow: 0 2px 5px rgba(0,0,0,0.1) !important;
             }
-            .materia-title { color: #31333F !important; }
-            .text-label { color: #555 !important; }
-            .text-main { color: #1e1e1e !important; }
-            .resumen-card { background-color: #ffffff !important; }
+            .materia-title, .text-main { 
+                color: #262730 !important; 
+            }
+            .text-label { 
+                color: #666666 !important; 
+            }
+            /* Fondo de la barra de progreso en modo claro */
+            .progress-bg { background-color: #eeeeee !important; }
         }
 
         .status-badge { display: inline-block; padding: 5px 10px; border-radius: 12px; font-size: 0.9rem; font-weight: bold; margin-bottom: 10px; }
         .status-active { background-color: rgba(0, 230, 118, 0.2); color: #00e676; border: 1px solid #00e676; }
-
         div.stButton > button { font-size: 1.2rem !important; font-weight: bold !important; border-radius: 12px !important; }
         </style>
     """, unsafe_allow_html=True)
@@ -660,19 +660,21 @@ def main():
         st.markdown(f"""
             <div class="resumen-card">
                 <div style="display:flex; justify-content:space-between; align-items:center;">
-                    <div class="text-label" style="font-size: 1.2rem; color: #aaa;">Hoy</div>
+                    <div class="text-label" style="font-size: 1.2rem;">Hoy</div>
                     <div style="display:flex; align-items:center; gap:6px; font-size:0.9rem;">
-                        <span class="text-label" style="color:#aaa;">Deuda:</span>
-                        <span style="color:{pozo_color};">
+                        <span class="text-label">Deuda:</span>
+                        <span style="color:{pozo_color}; font-weight:bold;">
                             {pozo_html}
                         </span>
                     </div>
                 </div>
-                <div class="text-main" style="width: 100%; font-size: 2.2rem; font-weight: bold; color: #fff; line-height: 1;">{total_html}</div>
-                <div style="width:100%; background-color:#333; border-radius:10px; height:12px; margin: 15px 0;">
+                <div class="text-main" style="width: 100%; font-size: 2.2rem; font-weight: bold; line-height: 1.2; margin: 10px 0;">
+                    {total_html}
+                </div>
+                <div class="progress-bg" style="width:100%; background-color:#333; border-radius:10px; height:12px; margin: 15px 0;">
                     <div style="width:{progreso_pct}%; background-color:{color_bar}; height:100%; border-radius:10px; transition: width 0.5s;"></div>
                 </div>
-                <div style="display:flex; justify-content:space-between; color:#888;">
+                <div style="display:flex; justify-content:space-between; color:#888; font-size: 0.9rem;">
                     {balance_html}
                     {objetivo_html}
                 </div>
@@ -712,7 +714,13 @@ def main():
 
         tiempo_total_hms = segundos_a_hms(tiempo_total_seg)
         badge_html = f'<div class="status-badge status-active">🟢 Estudiando...</div>' if en_curso else ''
-        html_card = f"""<div class="materia-card"><div class="materia-title">{materia}</div>{badge_html}<div class="materia-time">{tiempo_total_hms}</div></div>"""
+        html_card = f"""
+            <div class="materia-card">
+                <div class="materia-title">{materia}</div>
+                {badge_html}
+                <div class="materia-time">{tiempo_total_hms}</div>
+            </div>
+        """
 
         with st.container():
             st.markdown(html_card, unsafe_allow_html=True)
