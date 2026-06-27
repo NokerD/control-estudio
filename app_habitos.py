@@ -180,29 +180,6 @@ def run():
     # -------------------------
     pending = st.session_state.get("todays_pending_habits", [])
 
-    # Cartel en rojo con el total pendiente * 3750
-    faltantes = len(pending)
-    multa = faltantes * 3750
-
-    st.markdown(
-        f"""
-        <div style="
-            border: 2px solid #ff4d4d;
-            background-color: #ffe6e6;
-            color: #b30000;
-            padding: 16px 20px;
-            border-radius: 14px;
-            text-align: center;
-            font-size: 2.2rem;
-            font-weight: 800;
-            margin: 10px 0 18px 0;
-        ">
-            ${multa}
-        </div>
-        """,
-        unsafe_allow_html=True
-    )
-
     grouped = {1: [], 2: [], 3: []}
     for h in st.session_state.habits:
         if h["name"] in pending:
