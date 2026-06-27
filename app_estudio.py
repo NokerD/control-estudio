@@ -643,7 +643,7 @@ def main():
         pozo_html = f'<strong>{pozo_horas_decimal:.2f}hs</strong>'
         total_html = f'{total_hms}'
         # Aquí activamos el balance para Iván con tu frase personalizada
-        balance_html = ''
+        balance_html = f'<div>Facu te debe: <span style="color:{balance_color};">{balance_str}</span></div>'
         objetivo_html = f'<div>{objetivo_hms}</div>'
 
     # --- Actualizar Placeholder Global ---
