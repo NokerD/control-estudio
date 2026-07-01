@@ -676,6 +676,7 @@ def main():
                 </div>
                 <div style="display:flex; justify-content:space-between; color:#888;">
                     {balance_html}
+                    {hora_fin_html}
                     {objetivo_html}
                 </div>
             </div>
