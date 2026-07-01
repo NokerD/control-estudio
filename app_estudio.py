@@ -627,21 +627,19 @@ def main():
         balance_str = f"${balance_val-15000:.2f}" if balance_val-15000 > 0 else (f"-${abs(balance_val-15000):.2f}" if balance_val-15000 < 0 else "$0.00")
 
     # --- LÓGICA DE CONDICIONAL PARA MOSTRAR DINERO ---
-    mostrar_dinero = (USUARIO_ACTUAL == "Facundo")
-
-    # --- LÓGICA DE CONDICIONAL PARA MOSTRAR DINERO ---
     mostrar_dinero_detallado = (USUARIO_ACTUAL == "Facundo")
 
     # --- NUEVO: LÓGICA DE HORA DE FINALIZACIÓN ---
     hora_fin_html = "<div></div>"
     if usuario_estudiando:
-        minutos_restantes = (m_obj * 60) - total_min
+        # m_obj y total_min ya están ambos en minutos
+        minutos_restantes = m_obj - total_min
         if minutos_restantes > 0:
             # Calculamos a qué hora termina sumando los minutos que faltan a la hora actual
             hora_fin_obj = _argentina_now_global() + timedelta(minutes=minutos_restantes)
-            hora_fin_html = f'<div style="color:#00e676; font-weight:bold;">Meta: {hora_fin_obj.strftime("%H:%M")}</div>'
+            hora_fin_html = f'<div style="color:#888;">Meta: {hora_fin_obj.strftime("%H:%M")}</div>'
         else:
-            hora_fin_html = f'<div style="color:#00e676; font-weight:bold;">¡Meta alcanzada!</div>'
+            hora_fin_html = f'<div style="color:#888;">¡Meta alcanzada!</div>'
 
     if mostrar_dinero_detallado:
         # Caso Facundo: Muestra dinero en todos lados
