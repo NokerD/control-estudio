@@ -637,9 +637,9 @@ def main():
         if minutos_restantes > 0:
             # Calculamos a qué hora termina sumando los minutos que faltan a la hora actual
             hora_fin_obj = _argentina_now_global() + timedelta(minutes=minutos_restantes)
-            hora_fin_html = f'<div style="color:#888;">Meta: {hora_fin_obj.strftime("%H:%M")}</div>'
+            hora_fin_html = f'<div style="color:#888;">-> {hora_fin_obj.strftime("%H:%M")}</div>'
         else:
-            hora_fin_html = f'<div style="color:#888;">¡Meta alcanzada!</div>'
+            hora_fin_html = f'<div></div>'
 
     if mostrar_dinero_detallado:
         # Caso Facundo: Muestra dinero en todos lados
