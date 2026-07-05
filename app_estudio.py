@@ -225,7 +225,7 @@ def get_day_config(target_date=None):
     users_dict = {
         "Facundo": {
             "Trabajo":         {"time": f"'{SHEET_FACUNDO}'!B{time_row2}", "est": f"'{SHEET_MARCAS}'!Z10", "excluir": True},
-            "Cursado":         {"time": f"'{SHEET_FACUNDO}'!C{time_row2}", "est": f"'{SHEET_MARCAS}'!Z14"},
+            "Cursado":         {"time": f"'{SHEET_FACUNDO}'!C{time_row2}", "est": f"'{SHEET_MARCAS}'!Z14", "excluir": True},
             "Estadística I":    {"time": f"'{SHEET_FACUNDO}'!D{time_row2}", "est": f"'{SHEET_MARCAS}'!Z4"},
             "Int. Contabilidad":    {"time": f"'{SHEET_FACUNDO}'!E{time_row2}", "est": f"'{SHEET_MARCAS}'!Z5"},
             "Sociología": {"time": f"'{SHEET_FACUNDO}'!F{time_row2}", "est": f"'{SHEET_MARCAS}'!Z6"},
@@ -568,20 +568,43 @@ def main():
     def calcular_metricas(usuario, tiempo_activo_seg_local=0):
         per_min = resumen_marcas[usuario]["per_min"]
         objetivo = resumen_marcas[usuario]["obj"]
-        total_min = 0.0
+        
+        # Obtenemos el mínimo de estudio requerido desde los secrets (por defecto 0 si no existe)
+        try:
+            min_study = float(st.secrets.get("min_study", 0))
+        except (ValueError, TypeError):
+            min_study = 0.0
 
-        # Usamos USERS_LOCAL (dinámico)
+        total_min_regular = 0.0
+        total_min_excluido = 0.0
+
+        # Iteramos sobre las materias
         for materia, info in USERS_LOCAL[usuario].items():
-            if info.get("excluir"):
-                continue
             base_seg = hms_a_segundos(datos[usuario]["tiempos"][materia])
             segs_materia = base_seg
+            
+            # Si es la materia actual, le sumamos el tiempo en vivo
             if usuario_estudiando and usuario == USUARIO_ACTUAL and materia == materia_en_curso:
                 segs_materia += tiempo_activo_seg_local
-            total_min += segs_materia / 60
+            
+            mins_materia = segs_materia / 60
 
+            # Separamos las materias regulares de las excluidas (como "Trabajo")
+            if info.get("excluir"):
+                total_min_excluido += mins_materia
+            else:
+                total_min_regular += mins_materia
+
+        # Si los minutos regulares superan el límite de min_study, dejamos de ignorar "Trabajo"
+        if total_min_regular >= min_study:
+            total_min = total_min_regular + total_min_excluido
+        else:
+            total_min = total_min_regular
+
+        # Cálculos finales
         progreso_en_dinero = (tiempo_activo_seg_local / 60) * per_min
         m_tot = total_min * per_min
+        
         return m_tot, per_min, objetivo, total_min, progreso_en_dinero
 
     m_tot, m_rate, m_obj, total_min, progreso_en_dinero = calcular_metricas(USUARIO_ACTUAL, tiempo_anadido_seg)
