@@ -736,8 +736,18 @@ def main():
             tiempo_total_seg += max(0, tiempo_anadido_seg)
 
         tiempo_total_hms = segundos_a_hms(tiempo_total_seg)
+        
+        # --- NUEVO: Mostrar dinero al lado del tiempo (solo para Facundo) ---
+        if mostrar_dinero_detallado:
+            dinero_materia = (tiempo_total_seg / 60) * m_rate
+            tiempo_display = f"{tiempo_total_hms} | ${dinero_materia:.2f}"
+        else:
+            tiempo_display = tiempo_total_hms
+
         badge_html = f'<div class="status-badge status-active">🟢 Estudiando...</div>' if en_curso else ''
-        html_card = f"""<div class="materia-card"><div class="materia-title">{materia}</div>{badge_html}<div class="materia-time">{tiempo_total_hms}</div></div>"""
+        
+        # Actualizamos para que use 'tiempo_display' en lugar de 'tiempo_total_hms'
+        html_card = f"""<div class="materia-card"><div class="materia-title">{materia}</div>{badge_html}<div class="materia-time">{tiempo_display}</div></div>"""
 
         with st.container():
             st.markdown(html_card, unsafe_allow_html=True)
