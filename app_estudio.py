@@ -712,26 +712,25 @@ def main():
             </div>
         """, unsafe_allow_html=True)
 
-        # --- RENDERIZADO DE LA TARJETA DEL OTRO USUARIO ---
+        # --- RENDERIZADO DE LA TARJETA DEL OTRO USUARIO (UNA SOLA LÍNEA) ---
         if otro_estudiando:
             st.markdown(f"""
                 <div style="
                     background-color: #1e1e1e;
-                    padding: 15px;
+                    padding: 10px 15px;
                     border-radius: 10px;
                     margin-bottom: 20px;
                     border-left: 4px solid #00e676;
+                    font-size: 1rem;
+                    color: #fff;
+                    display: flex;
+                    align-items: center;
+                    justify-content: space-between;
                 ">
-                    <div style="display:flex; justify-content:space-between; align-items:center;">
-                        <div style="font-size: 1.2rem; color: #aaa; font-weight: bold;">{OTRO_USUARIO}</div>
-                        <div style="color: #00e676; font-size: 1.2rem;">🟢</div>
-                    </div>
-                    <div style="font-size: 1.8rem; font-weight: bold; color: #fff; margin-top: 5px; line-height: 1.2;">
-                        {materia_otro}
-                    </div>
-                    <div style="color: #aaa; font-size: 0.95rem; margin-top: 8px;">
-                        Estudiando hace <span style="color: #00e676; font-family: 'Courier New', monospace; font-weight: bold;">{tiempo_otro_hms}</span>
-                    </div>
+                    <span>
+                        <strong>{OTRO_USUARIO}:</strong> {materia_otro} hace <span style="color: #00e676; font-family: 'Courier New', monospace; font-weight: bold;">{tiempo_otro_hms}</span>
+                    </span>
+                    <span>🟢</span>
                 </div>
             """, unsafe_allow_html=True)
 
