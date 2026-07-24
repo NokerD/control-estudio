@@ -726,11 +726,11 @@ def main():
                         <div style="font-size: 1.2rem; color: #aaa; font-weight: bold;">{OTRO_USUARIO}</div>
                         <div style="color: #00e676; font-size: 1.2rem;">🟢</div>
                     </div>
-                    <div style="font-size: 1.8rem; font-weight: bold; color: #fff; margin-top: 5px; line-height: 1.2;">
+                    <div style="font-size: 1.4rem; font-weight: bold; color: #fff; margin-top: 5px; line-height: 1.2;">
                         {materia_otro}
                     </div>
                     <div style="color: #aaa; font-size: 0.95rem; margin-top: 8px;">
-                        Estudiando hace <span style="color: #00e676; font-family: 'Courier New', monospace; font-weight: bold;">{tiempo_otro_hms}</span>
+                        hace <span style="color: #00e676; font-family: 'Courier New', monospace; font-weight: bold;">{tiempo_otro_hms}</span>
                     </div>
                 </div>
             """, unsafe_allow_html=True)
