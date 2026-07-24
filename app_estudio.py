@@ -712,7 +712,7 @@ def main():
             </div>
         """, unsafe_allow_html=True)
 
-        # --- RENDERIZADO DE LA TARJETA DEL OTRO USUARIO (SEGUNDA OPCIÓN) ---
+        # --- RENDERIZADO DE LA TARJETA DEL OTRO USUARIO ---
         if otro_estudiando:
             st.markdown(f"""
                 <div style="
@@ -726,11 +726,11 @@ def main():
                         <div style="font-size: 1.2rem; color: #aaa; font-weight: bold;">{OTRO_USUARIO}</div>
                         <div style="color: #00e676; font-size: 1.2rem;">🟢</div>
                     </div>
-                    <div style="font-size: 1.4rem; font-weight: bold; color: #fff; margin-top: 5px; line-height: 1.2;">
+                    <div style="font-size: 1.8rem; font-weight: bold; color: #fff; margin-top: 5px; line-height: 1.2;">
                         {materia_otro}
                     </div>
                     <div style="color: #aaa; font-size: 0.95rem; margin-top: 8px;">
-                        hace <span style="color: #00e676; font-family: 'Courier New', monospace; font-weight: bold;">{tiempo_otro_hms}</span>
+                        Estudiando hace <span style="color: #00e676; font-family: 'Courier New', monospace; font-weight: bold;">{tiempo_otro_hms}</span>
                     </div>
                 </div>
             """, unsafe_allow_html=True)
@@ -745,9 +745,22 @@ def main():
         materia_visible = 'visible' if materia_otro else 'hidden'
         materia_nombre_html = f'<span style="color:#00e676; margin-left:6px; visibility:{materia_visible};">{materia_otro if materia_otro else ""}</span>'
 
-        with st.expander("ℹ️ No pensar, actuar."):
-            md_content = st.secrets["facundo_md"] if USUARIO_ACTUAL == "Facundo" else st.secrets["ivan_md"]
-            st.markdown(md_content)
+        # --- SECCIÓN AESTHETIC: NO PENSAR, ACTUAR ---
+        md_content = st.secrets["facundo_md"] if USUARIO_ACTUAL == "Facundo" else st.secrets["ivan_md"]
+        formatted_content = md_content.strip().replace("\n", "<br>")
+        st.markdown(f"""
+            <div style="
+                font-style: italic;
+                font-size: 0.85rem;
+                color: #858585;
+                border-left: 2px solid #444;
+                padding-left: 12px;
+                margin: 15px 0 25px 0;
+                line-height: 1.5;
+            ">
+                “{formatted_content}”
+            </div>
+        """, unsafe_allow_html=True)
             
         if usuario_estudiando:
             if st.button("🔄 Actualizar", use_container_width=True):
