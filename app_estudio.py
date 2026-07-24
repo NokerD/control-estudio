@@ -652,17 +652,45 @@ def main():
     # --- LÓGICA DE CONDICIONAL PARA MOSTRAR DINERO ---
     mostrar_dinero_detallado = (USUARIO_ACTUAL == "Facundo")
 
-    # --- NUEVO: LÓGICA DE HORA DE FINALIZACIÓN ---
+    # --- LÓGICA DE HORA DE FINALIZACIÓN ---
     hora_fin_html = "<div></div>"
+    
     if usuario_estudiando:
-        # m_obj y total_min ya están ambos en minutos
-        minutos_restantes = m_obj - total_min
+        try:
+            min_study = float(st.secrets.get("min_study", 0))
+        except (ValueError, TypeError):
+            min_study = 0.0
+    
+        total_min_regular = 0.0
+        total_min_excluido = 0.0
+    
+        for materia, info in USERS_LOCAL[USUARIO_ACTUAL].items():
+            segs = hms_a_segundos(datos[USUARIO_ACTUAL]["tiempos"][materia])
+    
+            if materia == materia_en_curso:
+                segs += tiempo_anadido_seg
+    
+            minutos = segs / 60
+    
+            if info.get("excluir"):
+                total_min_excluido += minutos
+            else:
+                total_min_regular += minutos
+    
+        if total_min_regular >= min_study:
+            minutos_restantes = m_obj - (total_min_regular + total_min_excluido)
+        else:
+            faltan_para_minimo = min_study - total_min_regular
+            total_proyectado = min_study + total_min_excluido
+    
+            if total_proyectado >= m_obj:
+                minutos_restantes = faltan_para_minimo
+            else:
+                minutos_restantes = faltan_para_minimo + (m_obj - total_proyectado)
+    
         if minutos_restantes > 0:
-            # Calculamos a qué hora termina sumando los minutos que faltan a la hora actual
             hora_fin_obj = _argentina_now_global() + timedelta(minutes=minutos_restantes)
             hora_fin_html = f'<div style="color:#aaa;">Terminás a las {hora_fin_obj.strftime("%H:%M")}</div>'
-        else:
-            hora_fin_html = f'<div></div>'
 
     if mostrar_dinero_detallado:
         # Caso Facundo: Muestra dinero en todos lados
