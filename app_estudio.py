@@ -775,7 +775,7 @@ def main():
     # --- Actualizar Placeholder Global ---
     with st.container():
         st.markdown(f"""
-            <div style="background-color: #1e1e1e; padding: 15px; border-radius: 10px; margin-bottom: 20px;">
+            <div style="background-color: #1e1e1e; padding: 15px; border-radius: 10px; margin-bottom: 0px;">
                 <div style="display:flex; justify-content:space-between; align-items:center;">
                     <div style="font-size: 1.2rem; color: #aaa;">Hoy</div>
                     <div style="display:flex; align-items:center; gap:6px; font-size:0.9rem;">
@@ -804,7 +804,7 @@ def main():
                     background-color: #1e1e1e;
                     padding: 10px 15px;
                     border-radius: 10px;
-                    margin-bottom: 20px;
+                    margin-bottom: 0px;
                     border-left: 4px solid {COLOR_PRINCIPAL};
                     font-size: 1rem;
                     color: #fff;
@@ -851,26 +851,29 @@ def main():
             
             # Formateador de texto flotante (Tooltip)
             val_str = f"{int(val)} hs" if val == int(val) else f"{val:.1f} hs"
-            cells_html += f'<div class="heatmap-cell" style="background-color: {color_celda}; width: 25px; height: 25px; border-radius: 3px;" title="{val_str}"></div>'
+            cells_html += f'<div class="heatmap-cell" style="background-color: {color_celda}; width: 18px; height: 18px; border-radius: 3px;" title="{val_str}"></div>'
 
         st.markdown(f"""
             <div style="
                 background-color: #1e1e1e;
                 padding: 15px;
                 border-radius: 10px;
-                margin-bottom: 25px;
+                margin-bottom: 0px;
                 display: flex;
                 flex-direction: column;
                 align-items: center;
                 gap: 8px;
             ">
+                <div style="font-size: 0.9rem; color: #888; font-weight: bold; align-self: flex-start; margin-left: 5px;">
+                    Frecuencia de Estudio (Últimos 30 días)
+                </div>
                 <div style="
                     display: grid;
-                    grid-template-columns: repeat(10, 25px);
-                    grid-template-rows: repeat(3, 25px);
+                    grid-template-columns: repeat(10, 18px);
+                    grid-template-rows: repeat(3, 18px);
                     gap: 4px;
                     justify-content: center;
-                ">
+                 font-family: sans-serif;">
                     {cells_html}
                 </div>
             </div>
@@ -884,17 +887,19 @@ def main():
         # --- SECCIÓN AESTHETIC: NO PENSAR, ACTUAR ---
         md_content = st.secrets["facundo_md"] if USUARIO_ACTUAL == "Facundo" else st.secrets["ivan_md"]
         formatted_content = md_content.strip().replace("\n", "<br>")
-        st.markdown(f"""<div style="
+        st.markdown(f"""
+            <div style="
                 font-style: italic;
                 font-size: 0.85rem;
                 color: #858585;
                 border-left: 2px solid #444;
                 padding-left: 12px;
-                margin: 15px 0 15px 0;
+                margin: 0px 0 10px 0;
                 line-height: 1.5;
             ">
                 “{formatted_content}”
-            </div>""", unsafe_allow_html=True)
+            </div>
+        """, unsafe_allow_html=True)
     
     # --- Actualizar Placeholders de Materias y Botones ---
     mis_materias = USERS_LOCAL[USUARIO_ACTUAL]
