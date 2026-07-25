@@ -851,7 +851,7 @@ def main():
             
             # Formateador de texto flotante (Tooltip)
             val_str = f"{int(val)} hs" if val == int(val) else f"{val:.1f} hs"
-            cells_html += f'<div class="heatmap-cell" style="background-color: {color_celda}; width: 18px; height: 18px; border-radius: 3px;" title="{val_str}"></div>'
+            cells_html += f'<div class="heatmap-cell" style="background-color: {color_celda}; width: 25px; height: 25px; border-radius: 3px;" title="{val_str}"></div>'
 
         st.markdown(f"""
             <div style="
@@ -864,13 +864,10 @@ def main():
                 align-items: center;
                 gap: 8px;
             ">
-                <div style="font-size: 0.9rem; color: #888; font-weight: bold; align-self: flex-start; margin-left: 5px;">
-                    Frecuencia de Estudio (Últimos 30 días)
-                </div>
                 <div style="
                     display: grid;
-                    grid-template-columns: repeat(10, 18px);
-                    grid-template-rows: repeat(3, 18px);
+                    grid-template-columns: repeat(10, 25px);
+                    grid-template-rows: repeat(3, 25px);
                     gap: 4px;
                     justify-content: center;
                  font-family: sans-serif;">
