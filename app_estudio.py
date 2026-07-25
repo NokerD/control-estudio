@@ -302,18 +302,18 @@ def cargar_datos_unificados(fecha_str):
     all_ranges.append(cfg["RANGO_POZO_IVAN"]); mapa_indices["pozo_ivan"] = idx; idx += 1
     all_ranges.append(cfg["RANGO_POZO_FACU"]); mapa_indices["pozo_facu"] = idx; idx += 1
 
-    # --- HISTORIAL ÚLTIMOS 60 DÍAS ---
+    # --- HISTORIAL ÚLTIMOS 30 DÍAS ---
     target_date = datetime.strptime(fecha_str, "%Y-%m-%d").date()
     delta_today = (target_date - FECHA_BASE).days
 
     # Facundo: Columna H de F. Economía
     row_end_facu = FILA_BASE2 + delta_today
-    row_start_facu = max(FILA_BASE2, row_end_facu - 59)
+    row_start_facu = max(FILA_BASE2, row_end_facu - 29)
     range_hist_facu = f"'{SHEET_FACUNDO}'!H{row_start_facu}:H{row_end_facu}"
 
     # Iván: Columna G de I. Física
     row_end_ivan = FILA_BASE + delta_today
-    row_start_ivan = max(FILA_BASE, row_end_ivan - 59)
+    row_start_ivan = max(FILA_BASE, row_end_ivan - 29)
     range_hist_ivan = f"'{SHEET_IVAN}'!G{row_start_ivan}:G{row_end_ivan}"
 
     all_ranges.append(range_hist_facu); mapa_indices["hist_facu"] = idx; idx += 1
@@ -333,7 +333,7 @@ def cargar_datos_unificados(fecha_str):
         if not rows: return default
         return rows[0][0] if rows[0] else default
 
-    def get_list_val(i, default_len=60):
+    def get_list_val(i, default_len=30):
         if i >= len(values): return [0.0] * default_len
         vr = values[i]
         rows = vr.get("values", [])
@@ -342,7 +342,7 @@ def cargar_datos_unificados(fecha_str):
             val = r[0] if r else "0"
             float_list.append(parse_float_or_zero(val))
         
-        # Rellena con 0.0 al inicio si hay menos de 60 datos
+        # Rellena con 0.0 al inicio si hay menos de 30 datos
         while len(float_list) < default_len:
             float_list.insert(0, 0.0)
         return float_list[:default_len]
@@ -390,8 +390,8 @@ def cargar_datos_unificados(fecha_str):
     pozo_ivan_val = parse_float_or_zero(get_val(mapa_indices["pozo_ivan"]))
     pozo_facu_val = parse_float_or_zero(get_val(mapa_indices["pozo_facu"]))
 
-    hist_facu_vals = get_list_val(mapa_indices["hist_facu"], 60)
-    hist_ivan_vals = get_list_val(mapa_indices["hist_ivan"], 60)
+    hist_facu_vals = get_list_val(mapa_indices["hist_facu"])
+    hist_ivan_vals = get_list_val(mapa_indices["hist_ivan"])
 
     if "usuario_seleccionado" in st.session_state:
         st.session_state["materia_activa"] = materia_en_curso
@@ -433,8 +433,8 @@ def get_user_lock_status(user):
     if not range_str: return ""
     try:
         res = sheets_batch_get(st.secrets["sheet_id"], [range_str])
-        vr = res.get("values", [[""]])[0][0] if res.get("values") else ""
-        return str(vr).strip()
+        vr = res.get("valueRanges", [{}])[0]
+        return str(vr.get("values", [[""]])[0][0] if vr.get("values") else "").strip()
     except Exception as e:
         st.error(f"Error leyendo estado de lock para {user}: {e}")
         return "ERROR_READING_LOCK"
@@ -829,24 +829,7 @@ def main():
         materia_visible = 'visible' if materia_otro else 'hidden'
         materia_nombre_html = f'<span style="color:{COLOR_PRINCIPAL}; margin-left:6px; visibility:{materia_visible};">{materia_otro if materia_otro else ""}</span>'
 
-        # --- SECCIÓN AESTHETIC: NO PENSAR, ACTUAR ---
-        md_content = st.secrets["facundo_md"] if USUARIO_ACTUAL == "Facundo" else st.secrets["ivan_md"]
-        formatted_content = md_content.strip().replace("\n", "<br>")
-        st.markdown(f"""
-            <div style="
-                font-style: italic;
-                font-size: 0.85rem;
-                color: #858585;
-                border-left: 2px solid #444;
-                padding-left: 12px;
-                margin: 15px 0 15px 0;
-                line-height: 1.5;
-            ">
-                “{formatted_content}”
-            </div>
-        """, unsafe_allow_html=True)
-
-        # --- GITHUB COMMIT HEATMAP (ÚLTIMOS 60 DÍAS) ---
+        # --- GITHUB COMMIT HEATMAP (ÚLTIMOS 30 DÍAS) ---
         user_hist = datos_globales["hist_facu"] if USUARIO_ACTUAL == "Facundo" else datos_globales["hist_ivan"]
         max_val_hist = max(user_hist) if max(user_hist) > 0 else 1.0
         
@@ -868,7 +851,7 @@ def main():
             
             # Formateador de texto flotante (Tooltip)
             val_str = f"{int(val)} hs" if val == int(val) else f"{val:.1f} hs"
-            cells_html += f'<div class="heatmap-cell" style="background-color: {color_celda}; width: 25px; height: 25px; border-radius: 4px;" title="{val_str}"></div>'
+            cells_html += f'<div class="heatmap-cell" style="background-color: {color_celda}; width: 18px; height: 18px; border-radius: 3px;" title="{val_str}"></div>'
 
         st.markdown(f"""
             <div style="
@@ -880,17 +863,15 @@ def main():
                 flex-direction: column;
                 align-items: center;
                 gap: 8px;
-                width: 100%;
             ">
-                <div style="overflow-x: auto; width: 100%; display: flex; justify-content: center; padding-bottom: 5px;">
-                    <div style="
-                        display: grid;
-                        grid-template-columns: repeat(20, 25px);
-                        grid-template-rows: repeat(3, 25px);
-                        gap: 4px;
-                    ">
-                        {cells_html}
-                    </div>
+                <div style="
+                    display: grid;
+                    grid-template-columns: repeat(10, 18px);
+                    grid-template-rows: repeat(3, 18px);
+                    gap: 4px;
+                    justify-content: center;
+                ">
+                    {cells_html}
                 </div>
             </div>
         """, unsafe_allow_html=True)
@@ -899,6 +880,23 @@ def main():
             if st.button("🔄 Actualizar", use_container_width=True):
                 cargar_datos_unificados.clear()
                 st.rerun()
+        
+        # --- SECCIÓN AESTHETIC: NO PENSAR, ACTUAR ---
+        md_content = st.secrets["facundo_md"] if USUARIO_ACTUAL == "Facundo" else st.secrets["ivan_md"]
+        formatted_content = md_content.strip().replace("\n", "<br>")
+        st.markdown(f"""
+            <div style="
+                font-style: italic;
+                font-size: 0.85rem;
+                color: #858585;
+                border-left: 2px solid #444;
+                padding-left: 12px;
+                margin: 15px 0 15px 0;
+                line-height: 1.5;
+            ">
+                “{formatted_content}”
+            </div>
+        """, unsafe_allow_html=True)
     
     # --- Actualizar Placeholders de Materias y Botones ---
     mis_materias = USERS_LOCAL[USUARIO_ACTUAL]
