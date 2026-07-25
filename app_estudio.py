@@ -883,6 +883,7 @@ def main():
             if st.button("🔄 Actualizar", use_container_width=True):
                 cargar_datos_unificados.clear()
                 st.rerun()
+            st.markdown("<div style='height:1rem;'></div>", unsafe_allow_html=True)
         
         # --- SECCIÓN AESTHETIC: NO PENSAR, ACTUAR (ABAJO DEL BOTÓN) ---
         md_content = st.secrets["facundo_md"] if USUARIO_ACTUAL == "Facundo" else st.secrets["ivan_md"]
