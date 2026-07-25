@@ -807,6 +807,8 @@ def main():
         materia_visible = 'visible' if materia_otro else 'hidden'
         materia_nombre_html = f'<span style="color:{COLOR_PRINCIPAL}; margin-left:6px; visibility:{materia_visible};">{materia_otro if materia_otro else ""}</span>'
 
+        st.markdown("<div style='height:20px;'></div>", unsafe_allow_html=True)
+        
         # --- GITHUB COMMIT HEATMAP (ÚLTIMOS 30 DÍAS) ---
         user_hist = datos_globales["hist_facu"] if USUARIO_ACTUAL == "Facundo" else datos_globales["hist_ivan"]
         max_val_hist = max(user_hist) if max(user_hist) > 0 else 1.0
@@ -857,6 +859,8 @@ def main():
             </div>
         """, unsafe_allow_html=True)
 
+        st.markdown("<div style='height:20px;'></div>", unsafe_allow_html=True)
+        
         # --- RENDERIZADO DE LA TARJETA DEL OTRO USUARIO (ABAJO DE LAS CELDAS) ---
         if otro_estudiando:
             st.markdown(f"""
@@ -877,12 +881,16 @@ def main():
                     <span>{emoji_principal}</span>
                 </div>
             """, unsafe_allow_html=True)
-            
+
+        st.markdown("<div style='height:20px;'></div>", unsafe_allow_html=True)
+        
         if usuario_estudiando:
             if st.button("🔄 Actualizar", use_container_width=True):
                 cargar_datos_unificados.clear()
                 st.rerun()
-
+                
+        st.markdown("<div style='height:20px;'></div>", unsafe_allow_html=True)
+        
         # --- SECCIÓN AESTHETIC: NO PENSAR, ACTUAR (ABAJO DEL BOTÓN) ---
         md_content = st.secrets["facundo_md"] if USUARIO_ACTUAL == "Facundo" else st.secrets["ivan_md"]
         formatted_content = md_content.strip().replace("\n", "<br>")
