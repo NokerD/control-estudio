@@ -843,9 +843,6 @@ def main():
                 align-items: center;
                 gap: 8px;
             ">
-                <div style="font-size: 0.9rem; color: #888; font-weight: bold; align-self: flex-start; margin-left: 5px;">
-                    Frecuencia de Estudio (Últimos 30 días)
-                </div>
                 <div style="
                     display: grid;
                     grid-template-columns: repeat(10, 25px);
