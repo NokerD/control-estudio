@@ -865,7 +865,7 @@ def main():
                 gap: 8px;
             ">
                 <div style="color: #ff9800; font-weight: bold; font-size: 1.1rem; margin-bottom: 5px;">
-                    🔥 {streak} días seguidos
+                    🔥 {streak} días
                 </div>
                 <div style="
                     display: grid;
