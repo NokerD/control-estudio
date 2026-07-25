@@ -882,9 +882,6 @@ def main():
                 gap: 8px;
                 width: 100%;
             ">
-                <div style="font-size: 0.9rem; color: #888; font-weight: bold; align-self: flex-start; margin-left: 5px;">
-                    Frecuencia de Estudio (Últimos 60 días)
-                </div>
                 <div style="overflow-x: auto; width: 100%; display: flex; justify-content: center; padding-bottom: 5px;">
                     <div style="
                         display: grid;
