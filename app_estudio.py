@@ -891,7 +891,7 @@ def main():
             if diff_seg > 0:
                 comp_badge = f'<span style="background-color: #00e676; color: #000; padding: 2px 8px; border-radius: 10px; font-size: 0.8rem; font-weight: bold; margin-left: 10px;">Vas ganando por {diff_min} min 🏆</span>'
             elif diff_seg < 0:
-                comp_badge = f'<span style="background-color: #ff1744; color: #fff; padding: 2px 8px; border-radius: 10px; font-size: 0.8rem; font-weight: bold; margin-left: 10px;">Te gana por {diff_min} min 🏃‍♂️</span>'
+                comp_badge = f'<span></span>'
             else:
                 comp_badge = f'<span style="background-color: #ff9800; color: #fff; padding: 2px 8px; border-radius: 10px; font-size: 0.8rem; font-weight: bold; margin-left: 10px;">Empate ⏱️</span>'
 
