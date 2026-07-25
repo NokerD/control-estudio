@@ -22,6 +22,12 @@ except Exception:
 def cargar_estilos(color_principal="#00e676", color_principal_rgba="rgba(0, 230, 118, 0.2)"):
     st.markdown(f"""
         <style>
+        /* Forzar modo oscuro permanente */
+        .stApp {{
+            background-color: #0e1117 !important;
+            color: #ffffff !important;
+        }}
+        
         html, body, [class*="css"] {{ font-size: 18px !important; }}
         h1 {{ font-size: 2.5rem !important; }}
         h2 {{ font-size: 2rem !important; }}
@@ -621,11 +627,12 @@ def main():
 
     # --- CÁLCULO DE TIEMPO DEL OTRO USUARIO ---
     tiempo_otro_hms = ""
+    tiempo_otro_seg = 0
     if otro_estudiando:
         try:
             inicio_otro = parse_datetime(datos[OTRO_USUARIO]["estado"][materia_otro])
-            segs = int((_argentina_now_global() - inicio_otro).total_seconds())
-            tiempo_otro_hms = segundos_a_hms(segs)
+            tiempo_otro_seg = int((_argentina_now_global() - inicio_otro).total_seconds())
+            tiempo_otro_hms = segundos_a_hms(tiempo_otro_seg)
         except:
             otro_estudiando = False
 
@@ -680,11 +687,20 @@ def main():
     m_tot, m_rate, m_obj, total_min, progreso_en_dinero = calcular_metricas(USUARIO_ACTUAL, tiempo_anadido_seg)
     pago_objetivo = m_rate * m_obj
     progreso_pct = min(m_tot / max(1, pago_objetivo), 1.0) * 100
+    
+    # ------------------ MICRO-CELEBRACIÓN ------------------
     if progreso_pct >= 100 and "password_triggered" not in st.session_state:
         st.session_state.goal_completed = True
         st.session_state.password_triggered = True
-        st.rerun()
-    
+        st.session_state.show_celebration = True
+
+    if st.session_state.get("show_celebration", False):
+        st.balloons()
+        msj = st.secrets.get("celebration_msg", "¡Objetivo diario completado! Excelente trabajo. 🎯")
+        st.success(msj)
+        st.session_state.show_celebration = False
+    # ---------------------------------------------------------
+
     # Barra de progreso utiliza el color principal de la interfaz
     color_bar = COLOR_PRINCIPAL
 
@@ -797,20 +813,25 @@ def main():
             </div>
         """, unsafe_allow_html=True)
 
-        o_tot, o_rate, o_obj, total_min_otro, _ = calcular_metricas(OTRO_USUARIO)
-        o_pago_obj = o_rate * o_obj
-        o_progreso_pct = min(o_tot / max(1, o_pago_obj), 1.0) * 100
-        o_color_bar = COLOR_PRINCIPAL
-        o_obj_hms = segundos_a_hms(int(o_obj * 60))
-        o_total_hms = segundos_a_hms(int(total_min_otro * 60))
-
-        materia_visible = 'visible' if materia_otro else 'hidden'
-        materia_nombre_html = f'<span style="color:{COLOR_PRINCIPAL}; margin-left:6px; visibility:{materia_visible};">{materia_otro if materia_otro else ""}</span>'
-
         st.markdown("<div style='height:1rem;'></div>", unsafe_allow_html=True)
         
-        # --- GITHUB COMMIT HEATMAP (ÚLTIMOS 30 DÍAS) ---
+        # --- CÁLCULO DE RACHA (STREAK) Y GITHUB COMMIT HEATMAP ---
         user_hist = datos_globales["hist_facu"] if USUARIO_ACTUAL == "Facundo" else datos_globales["hist_ivan"]
+        
+        # Invertimos para contar desde el día más reciente (el último dato)
+        reversed_hist = user_hist[::-1]
+        streak = 0
+        if reversed_hist[0] > 0:
+            # Empezó a estudiar hoy
+            for val in reversed_hist:
+                if val > 0: streak += 1
+                else: break
+        elif len(reversed_hist) > 1 and reversed_hist[1] > 0:
+            # Hoy todavía 0, pero la racha sigue viva desde ayer
+            for val in reversed_hist[1:]:
+                if val > 0: streak += 1
+                else: break
+
         max_val_hist = max(user_hist) if max(user_hist) > 0 else 1.0
         
         cells_html = ""
@@ -843,6 +864,9 @@ def main():
                 align-items: center;
                 gap: 8px;
             ">
+                <div style="color: #ff9800; font-weight: bold; font-size: 1.1rem; margin-bottom: 5px;">
+                    🔥 {streak} días seguidos
+                </div>
                 <div style="
                     display: grid;
                     grid-template-columns: repeat(10, 25px);
@@ -858,8 +882,19 @@ def main():
 
         st.markdown("<div style='height:1rem;'></div>", unsafe_allow_html=True)
         
-        # --- RENDERIZADO DE LA TARJETA DEL OTRO USUARIO (ABAJO DE LAS CELDAS) ---
+        # --- RENDERIZADO DE LA TARJETA DEL OTRO USUARIO + COMPARADOR ---
         if otro_estudiando:
+            # Calculamos diferencia de minutos en la sesión en vivo actual
+            diff_seg = tiempo_anadido_seg - tiempo_otro_seg
+            diff_min = abs(diff_seg) // 60
+            
+            if diff_seg > 0:
+                comp_badge = f'<span style="background-color: #00e676; color: #000; padding: 2px 8px; border-radius: 10px; font-size: 0.8rem; font-weight: bold; margin-left: 10px;">Vas ganando por {diff_min} min 🏆</span>'
+            elif diff_seg < 0:
+                comp_badge = f'<span style="background-color: #ff1744; color: #fff; padding: 2px 8px; border-radius: 10px; font-size: 0.8rem; font-weight: bold; margin-left: 10px;">Te gana por {diff_min} min 🏃‍♂️</span>'
+            else:
+                comp_badge = f'<span style="background-color: #ff9800; color: #fff; padding: 2px 8px; border-radius: 10px; font-size: 0.8rem; font-weight: bold; margin-left: 10px;">Empate ⏱️</span>'
+
             st.markdown(f"""
                 <div style="
                     background-color: #1e1e1e;
@@ -874,6 +909,7 @@ def main():
                 ">
                     <span>
                         <strong>{OTRO_USUARIO}:</strong> {materia_otro} hace <span style="color: {COLOR_PRINCIPAL}; font-family: 'Courier New', monospace; font-weight: bold;">{tiempo_otro_hms}</span>
+                        {comp_badge}
                     </span>
                     <span>{emoji_principal}</span>
                 </div>
@@ -885,7 +921,7 @@ def main():
                 cargar_datos_unificados.clear()
                 st.rerun()
         
-        # --- SECCIÓN AESTHETIC: NO PENSAR, ACTUAR (ABAJO DEL BOTÓN) ---
+        # --- SECCIÓN AESTHETIC: NO PENSAR, ACTUAR ---
         md_content = st.secrets["facundo_md"] if USUARIO_ACTUAL == "Facundo" else st.secrets["ivan_md"]
         formatted_content = md_content.strip().replace("\n", "<br>")
         st.markdown(f"""
