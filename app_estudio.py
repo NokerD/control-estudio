@@ -19,41 +19,41 @@ except Exception:
     except Exception:
         pytz = None
 
-def cargar_estilos():
-    st.markdown("""
+def cargar_estilos(color_principal="#00e676", color_principal_rgba="rgba(0, 230, 118, 0.2)"):
+    st.markdown(f"""
         <style>
-        html, body, [class*="css"] { font-size: 18px !important; }
-        h1 { font-size: 2.5rem !important; }
-        h2 { font-size: 2rem !important; }
-        h3 { font-size: 1.5rem !important; }
+        html, body, [class*="css"] {{ font-size: 18px !important; }}
+        h1 {{ font-size: 2.5rem !important; }}
+        h2 {{ font-size: 2rem !important; }}
+        h3 {{ font-size: 1.5rem !important; }}
 
         /* Estilo de la tarjeta */
-        .materia-card {
+        .materia-card {{
             background-color: #262730;
             border: 1px solid #464b5c;
             padding: 20px;
             border-radius: 15px;
             margin-bottom: 20px;
             box-shadow: 0 4px 6px rgba(0,0,0,0.3);
-        }
-        .materia-title { font-size: 1.4rem; font-weight: bold; color: #ffffff; margin-bottom: 5px; }
+        }}
+        .materia-title {{ font-size: 1.4rem; font-weight: bold; color: #ffffff; margin-bottom: 5px; }}
         
         /* EL TIEMPO */
-        .materia-time { 
+        .materia-time {{ 
             font-size: 1.6rem; 
             font-weight: bold; 
-            color: #00e676; 
+            color: {color_principal}; 
             font-family: 'Courier New', monospace; 
             margin-bottom: 15px; 
-        }
+        }}
 
-        .status-badge { display: inline-block; padding: 5px 10px; border-radius: 12px; font-size: 0.9rem; font-weight: bold; margin-bottom: 10px; }
-        .status-active { background-color: rgba(0, 230, 118, 0.2); color: #00e676; border: 1px solid #00e676; }
+        .status-badge {{ display: inline-block; padding: 5px 10px; border-radius: 12px; font-size: 0.9rem; font-weight: bold; margin-bottom: 10px; }}
+        .status-active {{ background-color: {color_principal_rgba}; color: {color_principal}; border: 1px solid {color_principal}; }}
 
-        div.stButton > button { font-size: 1.2rem !important; font-weight: bold !important; border-radius: 12px !important; }
-        .btn-grande div[data-testid="stButton"] button { height: 3.5rem !important; }
+        div.stButton > button {{ font-size: 1.2rem !important; font-weight: bold !important; border-radius: 12px !important; }}
+        .btn-grande div[data-testid="stButton"] button {{ height: 3.5rem !important; }}
 
-        div[data-testid="stColumns"] { align-items: flex-start !important; }
+        div[data-testid="stColumns"] {{ align-items: flex-start !important; }}
         </style>
     """, unsafe_allow_html=True)
 
@@ -480,8 +480,6 @@ def stop_materia_callback(usuario, materia):
         pedir_rerun()
 
 def main():
-    cargar_estilos()
-
     if st.session_state.get("clear_cache_estudio", False):
         cargar_datos_unificados.clear()
         st.session_state["clear_cache_estudio"] = False
@@ -536,6 +534,18 @@ def main():
     materia_otro = next((m for m, v in datos[OTRO_USUARIO]["estado"].items() if str(v).strip() != ""), "")
     otro_estudiando = materia_otro != ""
 
+    # --- CONFIGURACIÓN DE COLOR SEGÚN EL OTRO ---
+    if otro_estudiando:
+        COLOR_PRINCIPAL = "#00b0ff"  # Azul brillante
+        COLOR_RGBA = "rgba(0, 176, 255, 0.2)"
+        emoji_principal = "🔵"
+    else:
+        COLOR_PRINCIPAL = "#00e676"  # Verde brillante
+        COLOR_RGBA = "rgba(0, 230, 118, 0.2)"
+        emoji_principal = "🟢"
+
+    cargar_estilos(COLOR_PRINCIPAL, COLOR_RGBA)
+
     # --- CÁLCULO DE TIEMPO DEL OTRO USUARIO ---
     tiempo_otro_hms = ""
     if otro_estudiando:
@@ -551,8 +561,8 @@ def main():
                 f'width:10px; height:10px; border-radius:50%; background:{color}; '
                 f'margin-right:6px; flex-shrink:0;"></span>')
 
-    circle_usuario = circle("#00e676" if usuario_estudiando else "#ffffff")
-    circle_otro = circle("#00e676" if otro_estudiando else "#ffffff")
+    circle_usuario = circle(COLOR_PRINCIPAL if usuario_estudiando else "#ffffff")
+    circle_otro = circle(COLOR_PRINCIPAL if otro_estudiando else "#ffffff")
 
     tiempo_anadido_seg = 0
     if usuario_estudiando and inicio_dt is not None:
@@ -601,7 +611,9 @@ def main():
         st.session_state.goal_completed = True
         st.session_state.password_triggered = True
         st.rerun()
-    color_bar = "#00e676" if progreso_pct >= 90 else "#ffeb3b" if progreso_pct >= 50 else "#ff1744"
+    
+    # Barra de progreso utiliza el color principal de la interfaz
+    color_bar = COLOR_PRINCIPAL
 
     objetivo_hms = segundos_a_hms(int(m_obj * 60))
     total_hms = segundos_a_hms(int(total_min * 60))
@@ -628,7 +640,7 @@ def main():
         balance_val = -balance_val
     if USUARIO_ACTUAL == "Facundo":
         balance_val += m_tot
-    balance_color = "#00e676" if balance_val > 0 else "#ff1744" if balance_val < 0 else "#aaa"
+    balance_color = COLOR_PRINCIPAL if balance_val > 0 else "#ff1744" if balance_val < 0 else "#aaa"
     if USUARIO_ACTUAL == "Facundo":
         balance_str = f"${balance_val:.2f}" if balance_val > 0 else (f"-${abs(balance_val):.2f}" if balance_val < 0 else "$0.00")
     else:
@@ -720,7 +732,7 @@ def main():
                     padding: 10px 15px;
                     border-radius: 10px;
                     margin-bottom: 20px;
-                    border-left: 4px solid #00e676;
+                    border-left: 4px solid {COLOR_PRINCIPAL};
                     font-size: 1rem;
                     color: #fff;
                     display: flex;
@@ -728,21 +740,21 @@ def main():
                     justify-content: space-between;
                 ">
                     <span>
-                        <strong>{OTRO_USUARIO}:</strong> {materia_otro} hace <span style="color: #00e676; font-family: 'Courier New', monospace; font-weight: bold;">{tiempo_otro_hms}</span>
+                        <strong>{OTRO_USUARIO}:</strong> {materia_otro} hace <span style="color: {COLOR_PRINCIPAL}; font-family: 'Courier New', monospace; font-weight: bold;">{tiempo_otro_hms}</span>
                     </span>
-                    <span>🟢</span>
+                    <span>{emoji_principal}</span>
                 </div>
             """, unsafe_allow_html=True)
 
         o_tot, o_rate, o_obj, total_min_otro, _ = calcular_metricas(OTRO_USUARIO)
         o_pago_obj = o_rate * o_obj
         o_progreso_pct = min(o_tot / max(1, o_pago_obj), 1.0) * 100
-        o_color_bar = "#00e676" if o_progreso_pct >= 90 else "#ffeb3b" if o_progreso_pct >= 50 else "#ff1744"
+        o_color_bar = COLOR_PRINCIPAL
         o_obj_hms = segundos_a_hms(int(o_obj * 60))
         o_total_hms = segundos_a_hms(int(total_min_otro * 60))
 
         materia_visible = 'visible' if materia_otro else 'hidden'
-        materia_nombre_html = f'<span style="color:#00e676; margin-left:6px; visibility:{materia_visible};">{materia_otro if materia_otro else ""}</span>'
+        materia_nombre_html = f'<span style="color:{COLOR_PRINCIPAL}; margin-left:6px; visibility:{materia_visible};">{materia_otro if materia_otro else ""}</span>'
 
         # --- SECCIÓN AESTHETIC: NO PENSAR, ACTUAR ---
         md_content = st.secrets["facundo_md"] if USUARIO_ACTUAL == "Facundo" else st.secrets["ivan_md"]
@@ -785,7 +797,7 @@ def main():
         else:
             tiempo_display = tiempo_total_hms
 
-        badge_html = f'<div class="status-badge status-active">🟢 Estudiando...</div>' if en_curso else ''
+        badge_html = f'<div class="status-badge status-active">{emoji_principal} Estudiando...</div>' if en_curso else ''
         
         html_card = f"""<div class="materia-card"><div class="materia-title">{materia}</div>{badge_html}<div class="materia-time">{tiempo_display}</div></div>"""
 
