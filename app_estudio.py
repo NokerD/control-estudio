@@ -864,6 +864,9 @@ def main():
                 align-items: center;
                 gap: 8px;
             ">
+                <div style="font-size: 0.9rem; color: #888; font-weight: bold; align-self: flex-start; margin-left: 5px;">
+                    Frecuencia de Estudio (Últimos 30 días)
+                </div>
                 <div style="
                     display: grid;
                     grid-template-columns: repeat(10, 18px);
@@ -880,7 +883,7 @@ def main():
             if st.button("🔄 Actualizar", use_container_width=True):
                 cargar_datos_unificados.clear()
                 st.rerun()
-        
+
         # --- SECCIÓN AESTHETIC: NO PENSAR, ACTUAR ---
         md_content = st.secrets["facundo_md"] if USUARIO_ACTUAL == "Facundo" else st.secrets["ivan_md"]
         formatted_content = md_content.strip().replace("\n", "<br>")
