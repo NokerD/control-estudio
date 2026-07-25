@@ -54,6 +54,15 @@ def cargar_estilos(color_principal="#00e676", color_principal_rgba="rgba(0, 230,
         .btn-grande div[data-testid="stButton"] button {{ height: 3.5rem !important; }}
 
         div[data-testid="stColumns"] {{ align-items: flex-start !important; }}
+
+        /* ESTILO DEL HEATMAP (GITHUB) */
+        .heatmap-cell {{
+            transition: filter 0.15s ease;
+        }}
+        .heatmap-cell:hover {{
+            filter: brightness(1.3);
+            cursor: pointer;
+        }}
         </style>
     """, unsafe_allow_html=True)
 
@@ -258,7 +267,18 @@ def cargar_datos_unificados(fecha_str):
     cfg_yesterday = get_day_config(yesterday)
     
     all_ranges = []
-    mapa_indices = {"materias": {}, "rates": {}, "objs": {}, "checks": {}, "week": None, "week_ayer": None, "mail_date": None, "mail_vago": None}
+    mapa_indices = {
+        "materias": {}, 
+        "rates": {}, 
+        "objs": {}, 
+        "checks": {}, 
+        "week": None, 
+        "week_ayer": None, 
+        "mail_date": None, 
+        "mail_vago": None,
+        "hist_facu": None,
+        "hist_ivan": None
+    }
     idx = 0
     
     for user, materias in USERS_LOCAL.items():
@@ -282,6 +302,23 @@ def cargar_datos_unificados(fecha_str):
     all_ranges.append(cfg["RANGO_POZO_IVAN"]); mapa_indices["pozo_ivan"] = idx; idx += 1
     all_ranges.append(cfg["RANGO_POZO_FACU"]); mapa_indices["pozo_facu"] = idx; idx += 1
 
+    # --- HISTORIAL ÚLTIMOS 30 DÍAS ---
+    target_date = datetime.strptime(fecha_str, "%Y-%m-%d").date()
+    delta_today = (target_date - FECHA_BASE).days
+
+    # Facundo: Columna H de F. Economía
+    row_end_facu = FILA_BASE2 + delta_today
+    row_start_facu = max(FILA_BASE2, row_end_facu - 29)
+    range_hist_facu = f"'{SHEET_FACUNDO}'!H{row_start_facu}:H{row_end_facu}"
+
+    # Iván: Columna G de I. Física
+    row_end_ivan = FILA_BASE + delta_today
+    row_start_ivan = max(FILA_BASE, row_end_ivan - 29)
+    range_hist_ivan = f"'{SHEET_IVAN}'!G{row_start_ivan}:G{row_end_ivan}"
+
+    all_ranges.append(range_hist_facu); mapa_indices["hist_facu"] = idx; idx += 1
+    all_ranges.append(range_hist_ivan); mapa_indices["hist_ivan"] = idx; idx += 1
+
     try:
         res = sheets_batch_get(st.secrets["sheet_id"], all_ranges)
     except Exception as e:
@@ -289,11 +326,26 @@ def cargar_datos_unificados(fecha_str):
         st.stop()
 
     values = res.get("valueRanges", [])
+    
     def get_val(i, default=""):
         if i >= len(values): return default
         vr = values[i]; rows = vr.get("values", [])
         if not rows: return default
         return rows[0][0] if rows[0] else default
+
+    def get_list_val(i, default_len=30):
+        if i >= len(values): return [0.0] * default_len
+        vr = values[i]
+        rows = vr.get("values", [])
+        float_list = []
+        for r in rows:
+            val = r[0] if r else "0"
+            float_list.append(parse_float_or_zero(val))
+        
+        # Rellena con 0.0 al inicio si hay menos de 30 datos
+        while len(float_list) < default_len:
+            float_list.insert(0, 0.0)
+        return float_list[:default_len]
 
     data_usuarios = {u: {"estado": {}, "tiempos": {}, "inicio_dt": None, "materia_activa": None} for u in USERS_LOCAL}
     materia_en_curso = None
@@ -338,6 +390,9 @@ def cargar_datos_unificados(fecha_str):
     pozo_ivan_val = parse_float_or_zero(get_val(mapa_indices["pozo_ivan"]))
     pozo_facu_val = parse_float_or_zero(get_val(mapa_indices["pozo_facu"]))
 
+    hist_facu_vals = get_list_val(mapa_indices["hist_facu"])
+    hist_ivan_vals = get_list_val(mapa_indices["hist_ivan"])
+
     if "usuario_seleccionado" in st.session_state:
         st.session_state["materia_activa"] = materia_en_curso
         st.session_state["inicio_dt"] = inicio_dt
@@ -351,7 +406,9 @@ def cargar_datos_unificados(fecha_str):
         "last_mail_vago": last_mail_vago,
         "checks": checks_data,
         "pozo_ivan": pozo_ivan_val,
-        "pozo_facu": pozo_facu_val
+        "pozo_facu": pozo_facu_val,
+        "hist_facu": hist_facu_vals,
+        "hist_ivan": hist_ivan_vals
     }
 
 def batch_write(updates):
@@ -539,10 +596,26 @@ def main():
         COLOR_PRINCIPAL = "#00b0ff"  # Azul brillante
         COLOR_RGBA = "rgba(0, 176, 255, 0.2)"
         emoji_principal = "🔵"
+        # Paleta de Azul GitHub
+        PALETTE = {
+            0: "#161b22",  # Vacío
+            1: "#0a3054",  # Bajo
+            2: "#004d80",  # Medio-Bajo
+            3: "#007acc",  # Medio-Alto
+            4: "#00b0ff"   # Alto (Azul dinámico activo)
+        }
     else:
         COLOR_PRINCIPAL = "#00e676"  # Verde brillante
         COLOR_RGBA = "rgba(0, 230, 118, 0.2)"
         emoji_principal = "🟢"
+        # Paleta de Verde GitHub
+        PALETTE = {
+            0: "#161b22",  # Vacío
+            1: "#0e4429",  # Bajo
+            2: "#006d32",  # Medio-Bajo
+            3: "#26a641",  # Medio-Alto
+            4: "#00e676"   # Alto (Verde dinámico activo)
+        }
 
     cargar_estilos(COLOR_PRINCIPAL, COLOR_RGBA)
 
@@ -766,10 +839,60 @@ def main():
                 color: #858585;
                 border-left: 2px solid #444;
                 padding-left: 12px;
-                margin: 15px 0 25px 0;
+                margin: 15px 0 15px 0;
                 line-height: 1.5;
             ">
                 “{formatted_content}”
+            </div>
+        """, unsafe_allow_html=True)
+
+        # --- GITHUB COMMIT HEATMAP (ÚLTIMOS 30 DÍAS) ---
+        user_hist = datos_globales["hist_facu"] if USUARIO_ACTUAL == "Facundo" else datos_globales["hist_ivan"]
+        max_val_hist = max(user_hist) if max(user_hist) > 0 else 1.0
+        
+        cells_html = ""
+        for val in user_hist:
+            if val <= 0:
+                level = 0
+            else:
+                ratio = val / max_val_hist
+                if ratio <= 0.25:
+                    level = 1
+                elif ratio <= 0.50:
+                    level = 2
+                elif ratio <= 0.75:
+                    level = 3
+                else:
+                    level = 4
+            color_celda = PALETTE[level]
+            
+            # Formateador de texto flotante (Tooltip)
+            val_str = f"{int(val)} hs" if val == int(val) else f"{val:.1f} hs"
+            cells_html += f'<div class="heatmap-cell" style="background-color: {color_celda}; width: 18px; height: 18px; border-radius: 3px;" title="{val_str}"></div>'
+
+        st.markdown(f"""
+            <div style="
+                background-color: #1e1e1e;
+                padding: 15px;
+                border-radius: 10px;
+                margin-bottom: 25px;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                gap: 8px;
+            ">
+                <div style="font-size: 0.9rem; color: #888; font-weight: bold; align-self: flex-start; margin-left: 5px;">
+                    Frecuencia de Estudio (Últimos 30 días)
+                </div>
+                <div style="
+                    display: grid;
+                    grid-template-columns: repeat(10, 18px);
+                    grid-template-rows: repeat(3, 18px);
+                    gap: 4px;
+                    justify-content: center;
+                ">
+                    {cells_html}
+                </div>
             </div>
         """, unsafe_allow_html=True)
             
