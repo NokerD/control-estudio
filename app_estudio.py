@@ -884,8 +884,7 @@ def main():
         # --- SECCIÓN AESTHETIC: NO PENSAR, ACTUAR ---
         md_content = st.secrets["facundo_md"] if USUARIO_ACTUAL == "Facundo" else st.secrets["ivan_md"]
         formatted_content = md_content.strip().replace("\n", "<br>")
-        st.markdown(f"""
-            <div style="
+        st.markdown(f"""<div style="
                 font-style: italic;
                 font-size: 0.85rem;
                 color: #858585;
@@ -895,8 +894,7 @@ def main():
                 line-height: 1.5;
             ">
                 “{formatted_content}”
-            </div>
-        """, unsafe_allow_html=True)
+            </div>""", unsafe_allow_html=True)
     
     # --- Actualizar Placeholders de Materias y Botones ---
     mis_materias = USERS_LOCAL[USUARIO_ACTUAL]
