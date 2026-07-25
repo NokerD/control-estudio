@@ -775,7 +775,7 @@ def main():
     # --- Actualizar Placeholder Global ---
     with st.container():
         st.markdown(f"""
-            <div style="background-color: #1e1e1e; padding: 15px; border-radius: 10px; margin-bottom: 0px;">
+            <div style="background-color: #1e1e1e; padding: 15px; border-radius: 10px;">
                 <div style="display:flex; justify-content:space-between; align-items:center;">
                     <div style="font-size: 1.2rem; color: #aaa;">Hoy</div>
                     <div style="display:flex; align-items:center; gap:6px; font-size:0.9rem;">
@@ -796,28 +796,6 @@ def main():
                 </div>
             </div>
         """, unsafe_allow_html=True)
-
-        # --- RENDERIZADO DE LA TARJETA DEL OTRO USUARIO (UNA SOLA LÍNEA) ---
-        if otro_estudiando:
-            st.markdown(f"""
-                <div style="
-                    background-color: #1e1e1e;
-                    padding: 10px 15px;
-                    border-radius: 10px;
-                    margin-bottom: 0px;
-                    border-left: 4px solid {COLOR_PRINCIPAL};
-                    font-size: 1rem;
-                    color: #fff;
-                    display: flex;
-                    align-items: center;
-                    justify-content: space-between;
-                ">
-                    <span>
-                        <strong>{OTRO_USUARIO}:</strong> {materia_otro} hace <span style="color: {COLOR_PRINCIPAL}; font-family: 'Courier New', monospace; font-weight: bold;">{tiempo_otro_hms}</span>
-                    </span>
-                    <span>{emoji_principal}</span>
-                </div>
-            """, unsafe_allow_html=True)
 
         o_tot, o_rate, o_obj, total_min_otro, _ = calcular_metricas(OTRO_USUARIO)
         o_pago_obj = o_rate * o_obj
@@ -851,24 +829,26 @@ def main():
             
             # Formateador de texto flotante (Tooltip)
             val_str = f"{int(val)} hs" if val == int(val) else f"{val:.1f} hs"
-            cells_html += f'<div class="heatmap-cell" style="background-color: {color_celda}; width: 25px; height: 25px; border-radius: 3px;" title="{val_str}"></div>'
+            cells_html += f'<div class="heatmap-cell" style="background-color: {color_celda}; width: 25px; height: 25px; border-radius: 4px;" title="{val_str}"></div>'
 
         st.markdown(f"""
             <div style="
                 background-color: #1e1e1e;
                 padding: 15px;
                 border-radius: 10px;
-                margin-bottom: 0px;
                 display: flex;
                 flex-direction: column;
                 align-items: center;
                 gap: 8px;
             ">
+                <div style="font-size: 0.9rem; color: #888; font-weight: bold; align-self: flex-start; margin-left: 5px;">
+                    Frecuencia de Estudio (Últimos 30 días)
+                </div>
                 <div style="
                     display: grid;
                     grid-template-columns: repeat(10, 25px);
                     grid-template-rows: repeat(3, 25px);
-                    gap: 4px;
+                    gap: 5px;
                     justify-content: center;
                     font-family: sans-serif;
                 ">
@@ -876,6 +856,27 @@ def main():
                 </div>
             </div>
         """, unsafe_allow_html=True)
+
+        # --- RENDERIZADO DE LA TARJETA DEL OTRO USUARIO (ABAJO DE LAS CELDAS) ---
+        if otro_estudiando:
+            st.markdown(f"""
+                <div style="
+                    background-color: #1e1e1e;
+                    padding: 10px 15px;
+                    border-radius: 10px;
+                    border-left: 4px solid {COLOR_PRINCIPAL};
+                    font-size: 1rem;
+                    color: #fff;
+                    display: flex;
+                    align-items: center;
+                    justify-content: space-between;
+                ">
+                    <span>
+                        <strong>{OTRO_USUARIO}:</strong> {materia_otro} hace <span style="color: {COLOR_PRINCIPAL}; font-family: 'Courier New', monospace; font-weight: bold;">{tiempo_otro_hms}</span>
+                    </span>
+                    <span>{emoji_principal}</span>
+                </div>
+            """, unsafe_allow_html=True)
             
         if usuario_estudiando:
             if st.button("🔄 Actualizar", use_container_width=True):
@@ -892,7 +893,6 @@ def main():
                 color: #858585;
                 border-left: 2px solid #444;
                 padding-left: 12px;
-                margin: 0px 0 15px 0;
                 line-height: 1.5;
             ">
                 “{formatted_content}”
