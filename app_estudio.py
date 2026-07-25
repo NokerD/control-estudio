@@ -883,8 +883,8 @@ def main():
             ">
                 <div style="
                     display: grid;
-                    grid-template-columns: repeat(10, 18px);
-                    grid-template-rows: repeat(3, 18px);
+                    grid-template-columns: repeat(10, 25px);
+                    grid-template-rows: repeat(3, 25px);
                     gap: 4px;
                     justify-content: center;
                 ">
