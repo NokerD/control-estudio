@@ -696,8 +696,6 @@ def main():
 
     if st.session_state.get("show_celebration", False):
         st.balloons()
-        msj = st.secrets.get("celebration_msg", "¡Objetivo diario completado! Excelente trabajo. 🎯")
-        st.success(msj)
         st.session_state.show_celebration = False
     # ---------------------------------------------------------
 
