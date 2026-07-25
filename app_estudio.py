@@ -870,7 +870,8 @@ def main():
                     grid-template-rows: repeat(3, 25px);
                     gap: 4px;
                     justify-content: center;
-                 font-family: sans-serif;">
+                    font-family: sans-serif;
+                ">
                     {cells_html}
                 </div>
             </div>
@@ -881,7 +882,7 @@ def main():
                 cargar_datos_unificados.clear()
                 st.rerun()
 
-        # --- SECCIÓN AESTHETIC: NO PENSAR, ACTUAR ---
+        # --- SECCIÓN AESTHETIC: NO PENSAR, ACTUAR (ABAJO DEL BOTÓN) ---
         md_content = st.secrets["facundo_md"] if USUARIO_ACTUAL == "Facundo" else st.secrets["ivan_md"]
         formatted_content = md_content.strip().replace("\n", "<br>")
         st.markdown(f"""
@@ -891,7 +892,7 @@ def main():
                 color: #858585;
                 border-left: 2px solid #444;
                 padding-left: 12px;
-                margin: 0px 0 10px 0;
+                margin: 0px 0 15px 0;
                 line-height: 1.5;
             ">
                 “{formatted_content}”
