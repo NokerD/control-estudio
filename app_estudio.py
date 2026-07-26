@@ -855,7 +855,7 @@ def main():
         st.markdown(f"""
             <div style="background-color: #1e1e1e; padding: 15px; border-radius: 10px;">
                 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 12px;">
-                    <div style="background-color: rgba(255, 152, 0, 0.1); border: 1px solid #ff9800; padding: 1px 12px; border-radius: 15px; display:flex; align-items:center; gap: 6px;">
+                    <div style="background-color: rgba(255, 152, 0, 0.1); border: 1px solid #ff9800; padding: 1px 5px; border-radius: 15px; display:flex; align-items:center; gap: 6px;">
                         <span style="font-size: 1.1rem;">🔥</span>
                         <span style="color: #ff9800; font-weight: bold; font-size: 0.95rem;">Racha: {streak} días</span>
                     </div>
