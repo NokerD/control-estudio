@@ -823,7 +823,7 @@ def main():
             <div style="background-color: #1e1e1e; padding: 15px; border-radius: 10px;">
                 <div style="display:flex; justify-content:space-between; align-items:center;">
                     <div style="font-size: 1rem; color: #aaa; display:flex; align-items:center;">
-                    Racha:<span style="color: #ff9800; font-weight: bold; margin-left: 10px, font-size: 1.2rem;">{streak}🔥</span>
+                    Racha:<span style="color: #ff9800; font-weight: bold; margin-left: 20px, font-size: 1.2rem;">{streak}🔥</span>
                     </div>
                     <div style="display:flex; align-items:center; gap:6px; font-size:0.9rem;">
                         <span style="color:#aaa;">Deuda:</span>
