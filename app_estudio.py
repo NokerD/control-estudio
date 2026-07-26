@@ -644,34 +644,6 @@ def main():
     materia_otro = next((m for m, v in datos[OTRO_USUARIO]["estado"].items() if str(v).strip() != ""), "")
     otro_estudiando = materia_otro != ""
 
-    # --- CONFIGURACIÓN DE COLOR SEGÚN EL OTRO Y UNO MISMO ---
-    if usuario_estudiando and otro_estudiando:
-        COLOR_PRINCIPAL = "#00b0ff"  # Azul brillante
-        COLOR_RGBA = "rgba(0, 176, 255, 0.2)"
-        emoji_principal = "🔵"
-        # Paleta de Azul GitHub
-        PALETTE = {
-            0: "#161b22",  # Vacío
-            1: "#0a3054",  # Bajo
-            2: "#004d80",  # Medio-Bajo
-            3: "#007acc",  # Medio-Alto
-            4: "#00b0ff"   # Alto (Azul dinámico activo)
-        }
-    else:
-        COLOR_PRINCIPAL = "#00e676"  # Verde brillante
-        COLOR_RGBA = "rgba(0, 230, 118, 0.2)"
-        emoji_principal = "🟢"
-        # Paleta de Verde GitHub
-        PALETTE = {
-            0: "#161b22",  # Vacío
-            1: "#0e4429",  # Bajo
-            2: "#006d32",  # Medio-Bajo
-            3: "#26a641",  # Medio-Alto
-            4: "#00e676"   # Alto (Verde dinámico activo)
-        }
-
-    cargar_estilos(COLOR_PRINCIPAL, COLOR_RGBA)
-
     # --- CÁLCULO DE TIEMPO DEL OTRO USUARIO ---
     tiempo_otro_hms = ""
     tiempo_otro_seg = 0
@@ -734,6 +706,44 @@ def main():
     m_tot, m_rate, m_obj, total_min, progreso_en_dinero = calcular_metricas(USUARIO_ACTUAL, tiempo_anadido_seg)
     pago_objetivo = m_rate * m_obj
     progreso_pct = min(m_tot / max(1, pago_objetivo), 1.0) * 100
+        # --- CONFIGURACIÓN DE COLOR SEGÚN EL OTRO Y UNO MISMO ---
+    if progreso_pct >= 100:
+        COLOR_PRINCIPAL = "#ff9800"
+        COLOR_RGBA = "rgba(255, 152, 0, 0.2)"
+        emoji_principal = "🟠"
+    
+        PALETTE = {
+            0: "#161b22",
+            1: "#5a3200",
+            2: "#8a4f00",
+            3: "#c77700",
+            4: "#ff9800"
+        }
+    elif usuario_estudiando and otro_estudiando:
+        COLOR_PRINCIPAL = "#00b0ff"  # Azul brillante
+        COLOR_RGBA = "rgba(0, 176, 255, 0.2)"
+        emoji_principal = "🔵"
+        # Paleta de Azul GitHub
+        PALETTE = {
+            0: "#161b22",  # Vacío
+            1: "#0a3054",  # Bajo
+            2: "#004d80",  # Medio-Bajo
+            3: "#007acc",  # Medio-Alto
+            4: "#00b0ff"   # Alto (Azul dinámico activo)
+        }
+    else:
+        COLOR_PRINCIPAL = "#00e676"  # Verde brillante
+        COLOR_RGBA = "rgba(0, 230, 118, 0.2)"
+        emoji_principal = "🟢"
+        # Paleta de Verde GitHub
+        PALETTE = {
+            0: "#161b22",  # Vacío
+            1: "#0e4429",  # Bajo
+            2: "#006d32",  # Medio-Bajo
+            3: "#26a641",  # Medio-Alto
+            4: "#00e676"   # Alto (Verde dinámico activo)
+        }
+    cargar_estilos(COLOR_PRINCIPAL, COLOR_RGBA)
     
     # ------------------ MICRO-CELEBRACIÓN ------------------
     if progreso_pct >= 100 and "password_triggered" not in st.session_state:
