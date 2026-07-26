@@ -4,7 +4,6 @@ import time
 import requests
 from datetime import datetime, date, timedelta, time as dt_time
 import streamlit as st
-from streamlit_lottie import st_lottie
 from google.oauth2 import service_account
 from google.auth.transport.requests import AuthorizedSession
 from requests.exceptions import RequestException
@@ -20,15 +19,6 @@ except Exception:
         import pytz
     except Exception:
         pytz = None
-
-# HELPER PARA CARGAR LOTTIE LOCAL (A PRUEBA DE FALLOS)
-@st.cache_data
-def load_lottiefile(filepath: str):
-    try:
-        with open(filepath, "r", encoding="utf-8") as f:
-            return json.load(f)
-    except Exception as e:
-        return None
 
 def cargar_estilos(color_principal="#00e676", color_principal_rgba="rgba(0, 230, 118, 0.2)"):
     st.markdown(f"""
@@ -82,6 +72,52 @@ def cargar_estilos(color_principal="#00e676", color_principal_rgba="rgba(0, 230,
         }}
         </style>
     """, unsafe_allow_html=True)
+
+def generar_particulas_azules():
+    return """
+    <style>
+    /* Contenedor fijo para que las partículas queden de fondo */
+    .particles-container {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
+        pointer-events: none; /* Para no interferir con los clics */
+        z-index: 0;
+        overflow: hidden;
+    }
+    .particle {
+        position: absolute;
+        bottom: -20px;
+        width: 6px;
+        height: 6px;
+        background-color: #00b0ff;
+        border-radius: 50%;
+        box-shadow: 0 0 10px #00b0ff, 0 0 20px #00b0ff;
+        animation: floatUp 5s infinite ease-in;
+        opacity: 0;
+    }
+    @keyframes floatUp {
+        0% { transform: translateY(0) scale(1); opacity: 1; }
+        100% { transform: translateY(-100vh) scale(0.5); opacity: 0; }
+    }
+    /* Partículas distribuidas y con delay para asimetría */
+    .particle:nth-child(1) { left: 15%; animation-duration: 6s; animation-delay: 0s; }
+    .particle:nth-child(2) { left: 35%; animation-duration: 5s; animation-delay: 2s; }
+    .particle:nth-child(3) { left: 55%; animation-duration: 7s; animation-delay: 1s; }
+    .particle:nth-child(4) { left: 75%; animation-duration: 4.5s; animation-delay: 3s; }
+    .particle:nth-child(5) { left: 85%; animation-duration: 8s; animation-delay: 0.5s; }
+    .particle:nth-child(6) { left: 25%; animation-duration: 5.5s; animation-delay: 1.5s; }
+    .particle:nth-child(7) { left: 65%; animation-duration: 6.5s; animation-delay: 2.5s; }
+    </style>
+    <div class="particles-container">
+        <div class="particle"></div><div class="particle"></div>
+        <div class="particle"></div><div class="particle"></div>
+        <div class="particle"></div><div class="particle"></div>
+        <div class="particle"></div>
+    </div>
+    """
 
 def _argentina_now_global():
     if ZoneInfo is not None:
@@ -566,9 +602,6 @@ def main():
         st.error("Error: Usuario no seleccionado en la sesión. Reinicia la aplicación.")
         st.stop()
         
-    # --- PREPARAR ANIMACIÓN LOTTIE DESDE EL ARCHIVO ---
-    lottie_azul_data = load_lottiefile("animacion.json")
-
     # --- Carga de datos ---
     hoy_str = _argentina_now_global().strftime("%Y-%m-%d")
     datos_globales = cargar_datos_unificados(hoy_str)
@@ -800,7 +833,7 @@ def main():
         hora_fin_html = f'<div></div>'
         objetivo_html = f'<div>{objetivo_hms}</div>'
 
-    # --- CÁLCULO DE RACHA (STREAK) Y GITHUB COMMIT HEATMAP (Movido arriba para el header) ---
+    # --- CÁLCULO DE RACHA (STREAK) Y GITHUB COMMIT HEATMAP ---
     user_hist = datos_globales["hist_facu"] if USUARIO_ACTUAL == "Facundo" else datos_globales["hist_ivan"]
     
     # Invertimos para contar desde el día más reciente (el último dato)
@@ -821,13 +854,14 @@ def main():
     with st.container():
         st.markdown(f"""
             <div style="background-color: #1e1e1e; padding: 15px; border-radius: 10px;">
-                <div style="display:flex; justify-content:space-between; align-items:center;">
-                    <div style={{ fontSize: "1.2rem", color: "#aaa", display: "flex", alignItems: "left" }}>
-                      Racha:
-                      <span style={{ color: "#ff9800", fontWeight: "bold", fontSize: "1rem" }}>
-                        {streak}🔥
-                      </span>
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 12px;">
+                    
+                    <!-- NUEVO BADGE DE RACHA -->
+                    <div style="background-color: rgba(255, 152, 0, 0.1); border: 1px solid #ff9800; padding: 4px 12px; border-radius: 15px; display:flex; align-items:center; gap: 6px;">
+                        <span style="font-size: 1.1rem;">🔥</span>
+                        <span style="color: #ff9800; font-weight: bold; font-size: 0.95rem;">Racha: {streak} días</span>
                     </div>
+
                     <div style="display:flex; align-items:center; gap:6px; font-size:0.9rem;">
                         <span style="color:#aaa;">Deuda:</span>
                         <span style="color:{pozo_color};">
@@ -848,10 +882,9 @@ def main():
         """, unsafe_allow_html=True)
 
         # --- MOSTRAR ANIMACIÓN SI AMBOS ESTUDIAN ---
-        if usuario_estudiando and otro_estudiando and lottie_azul_data:
-            col_anim1, col_anim2, col_anim3 = st.columns([1, 2, 1])
-            with col_anim2:
-                st_lottie(lottie_azul_data, height=150, key="epic_blue_studying")
+        if usuario_estudiando and otro_estudiando:
+            st.markdown(generar_particulas_azules(), unsafe_allow_html=True)
+            st.markdown("<div style='height:1rem;'></div>", unsafe_allow_html=True)
         else:
             st.markdown("<div style='height:1rem;'></div>", unsafe_allow_html=True)
         
