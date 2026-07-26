@@ -73,8 +73,8 @@ def cargar_estilos(color_principal="#00e676", color_principal_rgba="rgba(0, 230,
         </style>
     """, unsafe_allow_html=True)
 
-def generar_particulas_azules():
-    return """
+def generar_particulas(color):
+    return f"""
     <style>
     /* Contenedor fijo para que las partículas queden de fondo */
     .particles-container {
@@ -92,9 +92,9 @@ def generar_particulas_azules():
         bottom: -20px;
         width: 6px;
         height: 6px;
-        background-color: #00b0ff;
+        background-color: {color};
         border-radius: 50%;
-        box-shadow: 0 0 10px #00b0ff, 0 0 20px #00b0ff;
+        box-shadow: 0 0 10px {color}, 0 0 20px {color};
         animation: floatUp 5s infinite ease-in;
         opacity: 0;
     }
@@ -883,8 +883,8 @@ def main():
         """, unsafe_allow_html=True)
 
         # --- MOSTRAR ANIMACIÓN SI AMBOS ESTUDIAN ---
-        if usuario_estudiando and otro_estudiando:
-            st.markdown(generar_particulas_azules(), unsafe_allow_html=True)
+        if usuario_estudiando or otro_estudiando:
+            st.markdown(generar_particulas(COLOR_PRINCIPAL), unsafe_allow_html=True)
             st.markdown("<div style='height:1rem;'></div>", unsafe_allow_html=True)
         else:
             st.markdown("<div style='height:1rem;'></div>", unsafe_allow_html=True)
