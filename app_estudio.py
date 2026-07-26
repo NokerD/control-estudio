@@ -733,7 +733,7 @@ def main():
     m_tot, m_rate, m_obj, total_min, progreso_en_dinero = calcular_metricas(USUARIO_ACTUAL, tiempo_anadido_seg)
     pago_objetivo = m_rate * m_obj
     progreso_pct = min(m_tot / max(1, pago_objetivo), 1.0) * 100
-        if progreso_pct >= 100:
+    if progreso_pct >= 100:
         COLOR_PRINCIPAL = "#ff9800"
         COLOR_RGBA = "rgba(255, 152, 0, 0.2)"
         emoji_principal = "🟠"
@@ -745,7 +745,7 @@ def main():
             3: "#c77700",
             4: "#ff9800"
         }
-    cargar_estilos(COLOR_PRINCIPAL, COLOR_RGBA)
+        cargar_estilos(COLOR_PRINCIPAL, COLOR_RGBA)
     
     # ------------------ MICRO-CELEBRACIÓN ------------------
     if progreso_pct >= 100 and "password_triggered" not in st.session_state:
