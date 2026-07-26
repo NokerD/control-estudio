@@ -883,6 +883,9 @@ def main():
         """, unsafe_allow_html=True)
 
         # --- MOSTRAR ANIMACIÓN SI AMBOS ESTUDIAN ---
+        
+        st.markdown("<div style='height:1rem;'></div>", unsafe_allow_html=True)
+        
         if usuario_estudiando or otro_estudiando:
             st.markdown(generar_particulas(COLOR_PRINCIPAL), unsafe_allow_html=True)
         
