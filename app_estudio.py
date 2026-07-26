@@ -2,6 +2,7 @@ import re
 import json
 import time
 import requests
+import markdown
 from datetime import datetime, date, timedelta, time as dt_time
 import streamlit as st
 from google.oauth2 import service_account
@@ -977,18 +978,19 @@ def main():
         
         # --- SECCIÓN AESTHETIC: NO PENSAR, ACTUAR ---
         md_content = st.secrets["facundo_md"] if USUARIO_ACTUAL == "Facundo" else st.secrets["ivan_md"]
-        formatted_content = md_content.strip().replace("\n", "<br>")
+        formatted_content = markdown.markdown(md_content)
+        
         st.markdown(f"""
-            <div style="
-                font-style: italic;
-                font-size: 0.85rem;
-                color: #858585;
-                border-left: 2px solid #444;
-                padding-left: 12px;
-                line-height: 1.5;
-            ">
-                “{formatted_content}”
-            </div>
+        <div style="
+            font-style: italic;
+            font-size: 0.85rem;
+            color: #858585;
+            border-left: 2px solid #444;
+            padding-left: 12px;
+            line-height: 1.5;
+        ">
+            {formatted_content}
+        </div>
         """, unsafe_allow_html=True)
         
         st.markdown("<div style='height:1rem;'></div>", unsafe_allow_html=True)
