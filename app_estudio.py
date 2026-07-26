@@ -992,8 +992,6 @@ def main():
             {formatted_content}
         </div>
         """, unsafe_allow_html=True)
-        
-        st.markdown("<div style='height:1rem;'></div>", unsafe_allow_html=True)
     
     # --- Actualizar Placeholders de Materias y Botones ---
     mis_materias = USERS_LOCAL[USUARIO_ACTUAL]
