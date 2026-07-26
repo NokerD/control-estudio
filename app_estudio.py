@@ -822,7 +822,7 @@ def main():
         st.markdown(f"""
             <div style="background-color: #1e1e1e; padding: 15px; border-radius: 10px;">
                 <div style="display:flex; justify-content:space-between; align-items:center;">
-                    <div style={{ fontSize: "1.2rem", color: "#aaa", display: "flex", alignItems: "center" }}>
+                    <div style={{ fontSize: "1.2rem", color: "#aaa", display: "flex", alignItems: "left" }}>
                       Racha:
                       <span style={{ color: "#ff9800", fontWeight: "bold", fontSize: "1rem" }}>
                         {streak}🔥
