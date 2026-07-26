@@ -1,5 +1,4 @@
 streamlit
-markdown
 gspread
 requests
 google-auth
