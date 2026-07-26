@@ -850,15 +850,17 @@ def main():
             if val > 0: streak += 1
             else: break
 
+    if streak > 0:
+        streak_html = f'<div style="display:flex; align-items:center; gap: 4px;"><span style="font-size: 1.1rem;">🔥</span><span style="color: #ff9800; font-weight: bold; font-size: 0.95rem;">Racha: {streak} días</span></div>'
+    else:
+        streak_html = f'<div></div>'
+        
     # --- Actualizar Placeholder Global ---
     with st.container():
         st.markdown(f"""
             <div style="background-color: #1e1e1e; padding: 15px; border-radius: 10px;">
                 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 12px;">
-                    <div style="display:flex; align-items:center; gap: 4px;">
-                        <span style="font-size: 1.1rem;">🔥</span>
-                        <span style="color: #ff9800; font-weight: bold; font-size: 0.95rem;">Racha: {streak} días</span>
-                    </div>
+                    {streak_html}
                     <div style="display:flex; align-items:center; gap:6px; font-size:0.9rem;">
                         <span style="color:#aaa;">Deuda:</span>
                         <span style="color:{pozo_color};">
