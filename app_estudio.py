@@ -885,9 +885,6 @@ def main():
         # --- MOSTRAR ANIMACIÓN SI AMBOS ESTUDIAN ---
         if usuario_estudiando or otro_estudiando:
             st.markdown(generar_particulas(COLOR_PRINCIPAL), unsafe_allow_html=True)
-            st.markdown("<div style='height:1rem;'></div>", unsafe_allow_html=True)
-        else:
-            st.markdown("<div style='height:1rem;'></div>", unsafe_allow_html=True)
         
         # --- HEATMAP ---
         max_val_hist = max(user_hist) if max(user_hist) > 0 else 1.0
