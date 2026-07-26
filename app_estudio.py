@@ -597,8 +597,8 @@ def main():
     materia_otro = next((m for m, v in datos[OTRO_USUARIO]["estado"].items() if str(v).strip() != ""), "")
     otro_estudiando = materia_otro != ""
 
-    # --- CONFIGURACIÓN DE COLOR SEGÚN EL OTRO ---
-    if otro_estudiando:
+    # --- CONFIGURACIÓN DE COLOR SEGÚN EL OTRO Y UNO MISMO ---
+    if usuario_estudiando and otro_estudiando:
         COLOR_PRINCIPAL = "#00b0ff"  # Azul brillante
         COLOR_RGBA = "rgba(0, 176, 255, 0.2)"
         emoji_principal = "🔵"
@@ -786,12 +786,31 @@ def main():
         hora_fin_html = f'<div></div>'
         objetivo_html = f'<div>{objetivo_hms}</div>'
 
+    # --- CÁLCULO DE RACHA (STREAK) Y GITHUB COMMIT HEATMAP (Movido arriba para el header) ---
+    user_hist = datos_globales["hist_facu"] if USUARIO_ACTUAL == "Facundo" else datos_globales["hist_ivan"]
+    
+    # Invertimos para contar desde el día más reciente (el último dato)
+    reversed_hist = user_hist[::-1]
+    streak = 0
+    if reversed_hist[0] > 0:
+        # Empezó a estudiar hoy
+        for val in reversed_hist:
+            if val > 0: streak += 1
+            else: break
+    elif len(reversed_hist) > 1 and reversed_hist[1] > 0:
+        # Hoy todavía 0, pero la racha sigue viva desde ayer
+        for val in reversed_hist[1:]:
+            if val > 0: streak += 1
+            else: break
+
     # --- Actualizar Placeholder Global ---
     with st.container():
         st.markdown(f"""
             <div style="background-color: #1e1e1e; padding: 15px; border-radius: 10px;">
                 <div style="display:flex; justify-content:space-between; align-items:center;">
-                    <div style="font-size: 1.2rem; color: #aaa;">Hoy</div>
+                    <div style="font-size: 1.2rem; color: #aaa; display:flex; align-items:center;">
+                        Hoy <span style="color: #ff9800; font-weight: bold; margin-left: 10px; font-size: 1.3rem;">🔥{streak}</span>
+                    </div>
                     <div style="display:flex; align-items:center; gap:6px; font-size:0.9rem;">
                         <span style="color:#aaa;">Deuda:</span>
                         <span style="color:{pozo_color};">
@@ -813,23 +832,6 @@ def main():
 
         st.markdown("<div style='height:1rem;'></div>", unsafe_allow_html=True)
         
-        # --- CÁLCULO DE RACHA (STREAK) Y GITHUB COMMIT HEATMAP ---
-        user_hist = datos_globales["hist_facu"] if USUARIO_ACTUAL == "Facundo" else datos_globales["hist_ivan"]
-        
-        # Invertimos para contar desde el día más reciente (el último dato)
-        reversed_hist = user_hist[::-1]
-        streak = 0
-        if reversed_hist[0] > 0:
-            # Empezó a estudiar hoy
-            for val in reversed_hist:
-                if val > 0: streak += 1
-                else: break
-        elif len(reversed_hist) > 1 and reversed_hist[1] > 0:
-            # Hoy todavía 0, pero la racha sigue viva desde ayer
-            for val in reversed_hist[1:]:
-                if val > 0: streak += 1
-                else: break
-
         max_val_hist = max(user_hist) if max(user_hist) > 0 else 1.0
         
         cells_html = ""
@@ -862,9 +864,6 @@ def main():
                 align-items: center;
                 gap: 8px;
             ">
-                <div style="color: #ff9800; font-weight: bold; font-size: 1.1rem; margin-bottom: 5px;">
-                    {streak}🔥
-                </div>
                 <div style="
                     display: grid;
                     grid-template-columns: repeat(10, 25px);
