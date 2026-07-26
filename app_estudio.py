@@ -820,31 +820,37 @@ def main():
     # --- Actualizar Placeholder Global ---
     with st.container():
         st.markdown(f"""
-            <div style="background-color: #1e1e1e; padding: 15px; border-radius: 10px;">
-                <div style="display:flex; justify-content:space-between; align-items:center;">
-                    <div style={{ fontSize: "1.2rem", color: "#aaa", display: "flex", alignItems: "left" }}>
-                      Racha:
-                      <span style={{ color: "#ff9800", fontWeight: "bold", fontSize: "1rem" }}>
+        <div style="background-color: #1e1e1e; padding: 15px; border-radius: 10px;">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+                <div style="font-size:1.2rem; color:#aaa; display:flex; align-items:center;">
+                    Racha:
+                    <span style="color:#ff9800; font-weight:bold; font-size:1rem;">
                         {streak}🔥
-                      </span>
-                    </div>
-                    <div style="display:flex; align-items:center; gap:6px; font-size:0.9rem;">
-                        <span style="color:#aaa;">Deuda:</span>
-                        <span style="color:{pozo_color};">
-                            {pozo_html}
-                        </span>
-                    </div>
+                    </span>
                 </div>
-                <div style="width: 100%; font-size: 2.2rem; font-weight: bold; color: #fff; line-height: 1;">{total_html}</div>
-                <div style="width:100%; background-color:#333; border-radius:10px; height:12px; margin: 15px 0;">
-                    <div style="width:{progreso_pct}%; background-color:{color_bar}; height:100%; border-radius:10px; transition: width 0.5s;"></div>
-                </div>
-                <div style="display:flex; justify-content:space-between; color:#888;">
-                    {balance_html}
-                    {hora_fin_html}
-                    {objetivo_html}
+        
+                <div style="display:flex; align-items:center; gap:6px; font-size:0.9rem;">
+                    <span style="color:#aaa;">Deuda:</span>
+                    <span style="color:{pozo_color};">
+                        {pozo_html}
+                    </span>
                 </div>
             </div>
+        
+            <div style="width:100%; font-size:2.2rem; font-weight:bold; color:#fff; line-height:1;">
+                {total_html}
+            </div>
+        
+            <div style="width:100%; background-color:#333; border-radius:10px; height:12px; margin:15px 0;">
+                <div style="width:{progreso_pct}%; background-color:{color_bar}; height:100%; border-radius:10px;"></div>
+            </div>
+        
+            <div style="display:flex; justify-content:space-between; color:#888;">
+                {balance_html}
+                {hora_fin_html}
+                {objetivo_html}
+            </div>
+        </div>
         """, unsafe_allow_html=True)
 
         # --- MOSTRAR ANIMACIÓN SI AMBOS ESTUDIAN ---
