@@ -860,7 +860,7 @@ def main():
     # --- Actualizar Placeholder Global ---
     with st.container():
         st.markdown(f"""
-            <div style="background-color: #1e1e1e; padding: 15px; border-radius: 10px;">
+            <div style="background-color: #1e1e1e; padding: 15px; border-radius: 10px; position: relative; z-index: 10;">
                 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 12px;">
                     {streak_html}
                     <div style="display:flex; align-items:center; gap:6px; font-size:0.9rem;">
