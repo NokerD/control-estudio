@@ -74,7 +74,7 @@ def cargar_estilos(color_principal="#00e676", color_principal_rgba="rgba(0, 230,
     """, unsafe_allow_html=True)
 
 def generar_particulas(color):
-    return f"""
+    return """
     <style>
     /* Contenedor fijo para que las partículas queden de fondo */
     .particles-container {
@@ -92,9 +92,9 @@ def generar_particulas(color):
         bottom: -20px;
         width: 6px;
         height: 6px;
-        background-color: {color};
+        background-color: COLOR_PARTICULA;
         border-radius: 50%;
-        box-shadow: 0 0 10px {color}, 0 0 20px {color};
+        box-shadow: 0 0 10px COLOR_PARTICULA, 0 0 20px COLOR_PARTICULA;
         animation: floatUp 5s infinite ease-in;
         opacity: 0;
     }
@@ -117,7 +117,7 @@ def generar_particulas(color):
         <div class="particle"></div><div class="particle"></div>
         <div class="particle"></div>
     </div>
-    """
+    """.replace("COLOR_PARTICULA", color)
 
 def _argentina_now_global():
     if ZoneInfo is not None:
