@@ -1,8 +1,10 @@
 import re
 import json
 import time
+import requests # Necesario para Lottie
 from datetime import datetime, date, timedelta, time as dt_time
 import streamlit as st
+from streamlit_lottie import st_lottie # Nueva importación
 from google.oauth2 import service_account
 from google.auth.transport.requests import AuthorizedSession
 from requests.exceptions import RequestException
@@ -18,6 +20,14 @@ except Exception:
         import pytz
     except Exception:
         pytz = None
+
+# HELPER PARA CARGAR LOTTIE (NUEVO)
+@st.cache_data
+def load_lottieurl(url: str):
+    r = requests.get(url)
+    if r.status_code != 200:
+        return None
+    return r.json()
 
 def cargar_estilos(color_principal="#00e676", color_principal_rgba="rgba(0, 230, 118, 0.2)"):
     st.markdown(f"""
@@ -555,6 +565,11 @@ def main():
         st.error("Error: Usuario no seleccionado en la sesión. Reinicia la aplicación.")
         st.stop()
         
+    # --- PREPARAR ANIMACIÓN LOTTIE (NUEVO) ---
+    # Es un efecto de partículas azules abstracto y épico
+    lottie_azul_url = "https://lottie.host/805e197f-13a8-43f1-b92c-63304a430588/P6mEisH0pI.json"
+    lottie_azul_data = load_lottieurl(lottie_azul_url)
+
     # --- Carga de datos ---
     hoy_str = _argentina_now_global().strftime("%Y-%m-%d")
     datos_globales = cargar_datos_unificados(hoy_str)
@@ -830,8 +845,18 @@ def main():
             </div>
         """, unsafe_allow_html=True)
 
-        st.markdown("<div style='height:1rem;'></div>", unsafe_allow_html=True)
+        # --- MOSTRAR ANIMACIÓN ÉPICA SI AMBOS ESTUDIAN (NUEVO) ---
+        if usuario_estudiando and otro_estudiando and lottie_azul_data:
+            # Creamos columnas para centrarla un poco y que no sea gigante
+            col_anim1, col_anim2, col_anim3 = st.columns([1, 2, 1])
+            with col_anim2:
+                st_lottie(lottie_azul_data, height=150, key="epic_blue_studying")
+                st.markdown("<div style='text-align:center; color:#00b0ff; font-weight:bold; margin-top:-20px; margin-bottom:20px; font-size:1.1rem;'>MODO BESTIA: ACTIVADO 🔵</div>", unsafe_allow_html=True)
+        else:
+            # Separador normal si no hay animación
+            st.markdown("<div style='height:1rem;'></div>", unsafe_allow_html=True)
         
+        # --- HEATMAP ---
         max_val_hist = max(user_hist) if max(user_hist) > 0 else 1.0
         
         cells_html = ""
