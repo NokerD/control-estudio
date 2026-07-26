@@ -850,8 +850,10 @@ def main():
             if val > 0: streak += 1
             else: break
 
-    if streak > 0:
+    if streak > 1:
         streak_html = f'<div style="display:flex; align-items:center; gap: 4px;"><span style="font-size: 0.9rem;">🔥</span><span style="color: #ff9800; font-weight: bold; font-size: 0.9rem;">Racha: {streak} días</span></div>'
+    elif streak == 1:
+        streak_html = f'<div style="display:flex; align-items:center; gap: 4px;"><span style="font-size: 0.9rem;">🔥</span><span style="color: #ff9800; font-weight: bold; font-size: 0.9rem;">Racha: {streak} día</span></div>'
     else:
         streak_html = f'<div></div>'
         
