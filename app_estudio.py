@@ -939,17 +939,6 @@ def main():
         
         # --- RENDERIZADO DE LA TARJETA DEL OTRO USUARIO + COMPARADOR ---
         if otro_estudiando:
-            # Calculamos diferencia de minutos en la sesión en vivo actual
-            diff_seg = tiempo_anadido_seg - tiempo_otro_seg
-            diff_min = abs(diff_seg) // 60
-            
-            if diff_seg > 0:
-                comp_badge = f'<span style="background-color: #00e676; color: #000; padding: 2px 8px; border-radius: 10px; font-size: 0.8rem; font-weight: bold; margin-left: 10px;">Vas ganando por {diff_min} min 🏆</span>'
-            elif diff_seg < 0:
-                comp_badge = f'<span></span>'
-            else:
-                comp_badge = f'<span style="background-color: #ff9800; color: #fff; padding: 2px 8px; border-radius: 10px; font-size: 0.8rem; font-weight: bold; margin-left: 10px;">Empate ⏱️</span>'
-
             st.markdown(f"""
                 <div style="
                     background-color: #1e1e1e;
@@ -964,7 +953,6 @@ def main():
                 ">
                     <span>
                         <strong>{OTRO_USUARIO}:</strong> {materia_otro} hace <span style="color: {COLOR_PRINCIPAL}; font-family: 'Courier New', monospace; font-weight: bold;">{tiempo_otro_hms}</span>
-                        {comp_badge}
                     </span>
                     <span>{emoji_principal}</span>
                 </div>
