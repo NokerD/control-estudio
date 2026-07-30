@@ -73,7 +73,7 @@ def cargar_estilos(color_principal="#00e676", color_principal_rgba="rgba(0, 230,
             cursor: pointer;
         }}
         </style>
-    """, unsafe_html=True)
+    """, unsafe_allow_html=True)
 
 # ------------------ SISTEMA DE PARTÍCULAS POR RACHA ------------------
 def generar_particulas_racha(streak, color_base, activo=True):
@@ -856,10 +856,10 @@ def main():
                     {objetivo_html}
                 </div>
             </div>
-        """, unsafe_html=True)
+        """, unsafe_allow_html=True)
 
         # --- MOSTRAR ANIMACIÓN DINÁMICA DE PARTÍCULAS POR RACHA ---
-        st.markdown(generar_particulas_racha(streak, COLOR_PRINCIPAL, usuario_estudiando or otro_estudiando), unsafe_html=True)
+        st.markdown(generar_particulas_racha(streak, COLOR_PRINCIPAL, usuario_estudiando or otro_estudiando), unsafe_allow_html=True)
         
         # --- HEATMAP ---
         max_val_hist = max(user_hist) if max(user_hist) > 0 else 1.0
@@ -898,9 +898,9 @@ def main():
                     {cells_html}
                 </div>
             </div>
-        """, unsafe_html=True)
+        """, unsafe_allow_html=True)
 
-        st.markdown("<div style='height:1rem;'></div>", unsafe_html=True)
+        st.markdown("<div style='height:1rem;'></div>", unsafe_allow_html=True)
         
         # --- RENDERIZADO DE LA TARJETA DEL OTRO USUARIO + COMPARADOR ---
         if otro_estudiando:
@@ -921,7 +921,7 @@ def main():
                     </span>
                     <span>{emoji_principal}</span>
                 </div>
-            """, unsafe_html=True)
+            """, unsafe_allow_html=True)
             st.markdown("<div style='height:1rem;'></div>", unsafe_allow_html=True)
 
         if usuario_estudiando:
@@ -944,7 +944,7 @@ def main():
         ">
             {formatted_content}
         </div>
-        """, unsafe_html=True)
+        """, unsafe_allow_html=True)
     
     # --- Actualizar Placeholders de Materias y Botones ---
     mis_materias = USERS_LOCAL[USUARIO_ACTUAL]
@@ -969,7 +969,7 @@ def main():
         html_card = f"""<div class="materia-card"><div class="materia-title">{materia}</div>{badge_html}<div class="materia-time">{tiempo_display}</div></div>"""
 
         with st.container():
-            st.markdown(html_card, unsafe_html=True)
+            st.markdown(html_card, unsafe_allow_html=True)
 
             key_start = sanitize_key(f"start_{USUARIO_ACTUAL}_{materia}")
             key_stop = sanitize_key(f"stop_{USUARIO_ACTUAL}_{materia}")
