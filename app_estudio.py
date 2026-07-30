@@ -1,7 +1,6 @@
 import re
 import json
 import time
-import random
 import requests
 import markdown
 from datetime import datetime, date, timedelta, time as dt_time
@@ -75,117 +74,51 @@ def cargar_estilos(color_principal="#00e676", color_principal_rgba="rgba(0, 230,
         </style>
     """, unsafe_allow_html=True)
 
-# ------------------ SISTEMA DE PARTÍCULAS POR RACHA ------------------
-def generar_particulas_racha(streak, color_base, activo=True):
-    """
-    Genera partículas dinámicas en CSS/HTML dependiendo de la racha.
-    Niveles:
-      - Streak 0: Partículas apagadas/lentas (descanso)
-      - Streak 1-2: Tema base (Verde/Azul)
-      - Streak 3-6: Fuego Épico (Naranja/Rojo)
-      - Streak 7-13: Plasma Neón Cyberpunk (Magenta/Cian)
-      - Streak 14+: Supernova Dorado (Oro/Blanco con Aura ambiental)
-    """
-    if not activo and streak == 0:
-        return "<div style='height:1rem;'></div>"
-
-    # Definir paleta, densidad y velocidad según la racha
-    if streak == 0:
-        colors = ["#4a5568", "#718096"]
-        count = 6
-        min_speed, max_speed = 8.0, 14.0
-        aura_css = ""
-    elif streak < 3:
-        colors = [color_base, "#00e676" if color_base != "#00e676" else "#00b0ff"]
-        count = 12 if activo else 6
-        min_speed, max_speed = 5.0, 9.0
-        aura_css = ""
-    elif streak < 7:
-        colors = ["#ff9100", "#ff3d00", "#ffea00", "#ff6d00"]
-        count = 20 if activo else 10
-        min_speed, max_speed = 4.0, 8.0
-        aura_css = """
-            box-shadow: inset 0 0 60px rgba(255, 145, 0, 0.12);
-        """
-    elif streak < 14:
-        colors = ["#d500f9", "#00e5ff", "#7c4dff", "#651fff"]
-        count = 28 if activo else 14
-        min_speed, max_speed = 3.5, 7.0
-        aura_css = """
-            box-shadow: inset 0 0 80px rgba(213, 0, 249, 0.15);
-        """
-    else:  # 14+ Dios de la Racha
-        colors = ["#ffd700", "#ffab00", "#ffffff", "#ff6d00", "#00e5ff"]
-        count = 38 if activo else 18
-        min_speed, max_speed = 2.5, 6.0
-        aura_css = """
-            box-shadow: inset 0 0 100px rgba(255, 215, 0, 0.2), inset 0 0 30px rgba(255, 255, 255, 0.15);
-        """
-
-    particles_html = ""
-    css_rules = ""
-
-    # Generar partículas con aleatoriedad determinista/estética
-    random.seed(42 + streak)  # Mantener consistencia suave entre renders
-    
-    for i in range(count):
-        c = random.choice(colors)
-        size = random.randint(3, 11 if streak >= 7 else 8)
-        left = random.randint(2, 98)
-        duration = round(random.uniform(min_speed, max_speed), 2)
-        delay = round(random.uniform(0.0, 5.0), 2)
-        sway_dir = random.choice([-1, 1]) * random.randint(15, 45)
-        blur = random.choice([0, 0, 2, 4])  # Efecto BOKEH (algunas desenfocadas)
-        opacity = round(random.uniform(0.4, 0.95), 2)
-
-        p_class = f"p-{i}"
-        
-        css_rules += f"""
-        .{p_class} {{
-            left: {left}%;
-            width: {size}px;
-            height: {size}px;
-            background-color: {c};
-            box-shadow: 0 0 {size*2}px {c}, 0 0 {size*4}px {c};
-            filter: blur({blur}px);
-            opacity: {opacity};
-            animation: floatSway_{i} {duration}s infinite ease-in-out;
-            animation-delay: {delay}s;
-        }}
-        @keyframes floatSway_{i} {{
-            0% {{ transform: translateY(0) translateX(0) scale(1); opacity: 0; }}
-            20% {{ opacity: {opacity}; }}
-            80% {{ opacity: {opacity * 0.7}; }}
-            100% {{ transform: translateY(-105vh) translateX({sway_dir}px) scale(0.3); opacity: 0; }}
-        }}
-        """
-        particles_html += f'<div class="particle {p_class}"></div>'
-
-    html_code = f"""
+def generar_particulas(color):
+    return """
     <style>
-    .particles-container {{
+    /* Contenedor fijo para que las partículas queden de fondo */
+    .particles-container {
         position: fixed;
         top: 0;
         left: 0;
         width: 100vw;
         height: 100vh;
-        pointer-events: none;
+        pointer-events: none; /* Para no interferir con los clics */
         z-index: 0;
         overflow: hidden;
-        {aura_css}
-    }}
-    .particle {{
+    }
+    .particle {
         position: absolute;
-        bottom: -30px;
+        bottom: -20px;
+        width: 6px;
+        height: 6px;
+        background-color: COLOR_PARTICULA;
         border-radius: 50%;
-    }}
-    {css_rules}
+        box-shadow: 0 0 10px COLOR_PARTICULA, 0 0 20px COLOR_PARTICULA;
+        animation: floatUp 5s infinite ease-in;
+        opacity: 0;
+    }
+    @keyframes floatUp {
+        0% { transform: translateY(0) scale(1); opacity: 1; }
+        100% { transform: translateY(-100vh) scale(0.5); opacity: 0; }
+    }
+    /* Partículas distribuidas y con delay para asimetría */
+    .particle:nth-child(1) { left: 15%; animation-duration: 6s; animation-delay: 0s; }
+    .particle:nth-child(2) { left: 35%; animation-duration: 5s; animation-delay: 2s; }
+    .particle:nth-child(3) { left: 55%; animation-duration: 7s; animation-delay: 1s; }
+    .particle:nth-child(4) { left: 75%; animation-duration: 4.5s; animation-delay: 3s; }
+    .particle:nth-child(5) { left: 85%; animation-duration: 8s; animation-delay: 0.5s; }
+    .particle:nth-child(6) { left: 25%; animation-duration: 5.5s; animation-delay: 1.5s; }
+    .particle:nth-child(7) { left: 65%; animation-duration: 6.5s; animation-delay: 2.5s; }
     </style>
     <div class="particles-container">
-        {particles_html}
+        <div class="particle"></div><div class="particle"></div>
+        <div class="particle"></div><div class="particle"></div>
+        <div class="particle"></div><div class="particle"></div>
+        <div class="particle"></div>
     </div>
-    """
-    return html_code
+    """.replace("COLOR_PARTICULA", color)
 
 def _argentina_now_global():
     if ZoneInfo is not None:
@@ -427,10 +360,12 @@ def cargar_datos_unificados(fecha_str):
     target_date = datetime.strptime(fecha_str, "%Y-%m-%d").date()
     delta_today = (target_date - FECHA_BASE).days
 
+    # Facundo: Columna H de F. Economía
     row_end_facu = FILA_BASE2 + delta_today
     row_start_facu = max(FILA_BASE2, row_end_facu - 29)
     range_hist_facu = f"'{SHEET_FACUNDO}'!H{row_start_facu}:H{row_end_facu}"
 
+    # Iván: Columna G de I. Física
     row_end_ivan = FILA_BASE + delta_today
     row_start_ivan = max(FILA_BASE, row_end_ivan - 29)
     range_hist_ivan = f"'{SHEET_IVAN}'!G{row_start_ivan}:G{row_end_ivan}"
@@ -461,6 +396,7 @@ def cargar_datos_unificados(fecha_str):
             val = r[0] if r else "0"
             float_list.append(parse_float_or_zero(val))
         
+        # Rellena con 0.0 al inicio si hay menos de 30 datos
         while len(float_list) < default_len:
             float_list.insert(0, 0.0)
         return float_list[:default_len]
@@ -536,6 +472,37 @@ def batch_write(updates):
     except Exception as e:
         st.error(f"Error escribiendo Google Sheets: {e}")
         st.stop()
+        
+# ------------------ FUNCIONES DE LOCKEO DE SESIÓN ------------------
+def get_lock_range(user):
+    if user == "Facundo":
+        return RANGO_LOCK_FACUNDO
+    elif user == "Iván":
+        return RANGO_LOCK_IVAN
+    return None
+
+@st.cache_data(ttl=2)
+def get_user_lock_status(user):
+    range_str = get_lock_range(user)
+    if not range_str: return ""
+    try:
+        res = sheets_batch_get(st.secrets["sheet_id"], [range_str])
+        vr = res.get("valueRanges", [{}])[0]
+        return str(vr.get("values", [[""]])[0][0] if vr.get("values") else "").strip()
+    except Exception as e:
+        st.error(f"Error leyendo estado de lock para {user}: {e}")
+        return "ERROR_READING_LOCK"
+
+def set_user_lock_status(user, lock_value):
+    range_str = get_lock_range(user)
+    if not range_str: return False
+    try:
+        sheets_batch_update(st.secrets["sheet_id"], [(range_str, lock_value)])
+        get_user_lock_status.clear()
+        return True
+    except Exception as e:
+        st.error(f"Error escribiendo estado de lock para {user}: {e}")
+        return False
 
 # ------------------ CALLBACKS ACTUALIZADOS ------------------
 def start_materia_callback(usuario, materia):
@@ -563,24 +530,26 @@ def stop_materia_callback(usuario, materia):
         info = cfg["USERS"][usuario][materia]
         
         inicio = st.session_state.get("inicio_dt")
+        prev_est = ""
         if inicio is None or st.session_state.get("materia_activa") != materia:
+            st.warning("Marca de inicio no encontrada en session_state, releyendo de la hoja...")
             try:
                 res = sheets_batch_get(st.secrets["sheet_id"], [info["est"]])
                 vr = res.get("valueRanges", [{}])[0]
                 prev_est = vr.get("values", [[""]])[0][0] if vr.get("values") else ""
                 if not prev_est:
-                      st.error("No hay marca de inicio registrada.")
+                      st.error("No hay marca de inicio registrada (no se puede detener).")
                       pedir_rerun()
                       return
                 inicio = parse_datetime(prev_est)
             except Exception as e:
-                 st.error(f"Error leyendo marca de inicio: {e}")
+                 st.error(f"Error leyendo marca de inicio de la hoja: {e}")
                  pedir_rerun()
                  return
 
         fin = _argentina_now_global()
         if fin <= inicio:
-            st.error("Tiempo inválido.")
+            st.error("Tiempo inválido. La hora de fin es anterior a la de inicio.")
             batch_write([(info["est"], "")])
             pedir_rerun()
             return
@@ -631,7 +600,7 @@ def main():
         st.rerun()
         
     if "usuario_seleccionado" not in st.session_state or st.session_state["usuario_seleccionado"] not in ["Facundo", "Iván"]:
-        st.error("Error: Usuario no seleccionado en la sesión.")
+        st.error("Error: Usuario no seleccionado en la sesión. Reinicia la aplicación.")
         st.stop()
         
     # --- Carga de datos ---
@@ -672,20 +641,35 @@ def main():
                 break
 
     usuario_estudiando = materia_en_curso is not None
+
     materia_otro = next((m for m, v in datos[OTRO_USUARIO]["estado"].items() if str(v).strip() != ""), "")
     otro_estudiando = materia_otro != ""
 
     # --- CONFIGURACIÓN DE COLOR SEGÚN EL OTRO Y UNO MISMO ---
     if usuario_estudiando and otro_estudiando:
-        COLOR_PRINCIPAL = "#00b0ff"
+        COLOR_PRINCIPAL = "#00b0ff"  # Azul brillante
         COLOR_RGBA = "rgba(0, 176, 255, 0.2)"
         emoji_principal = "🔵"
-        PALETTE = {0: "#161b22", 1: "#0a3054", 2: "#004d80", 3: "#007acc", 4: "#00b0ff"}
+        # Paleta de Azul GitHub
+        PALETTE = {
+            0: "#161b22",  # Vacío
+            1: "#0a3054",  # Bajo
+            2: "#004d80",  # Medio-Bajo
+            3: "#007acc",  # Medio-Alto
+            4: "#00b0ff"   # Alto (Azul dinámico activo)
+        }
     else:
-        COLOR_PRINCIPAL = "#00e676"
+        COLOR_PRINCIPAL = "#00e676"  # Verde brillante
         COLOR_RGBA = "rgba(0, 230, 118, 0.2)"
         emoji_principal = "🟢"
-        PALETTE = {0: "#161b22", 1: "#0e4429", 2: "#006d32", 3: "#26a641", 4: "#00e676"}
+        # Paleta de Verde GitHub
+        PALETTE = {
+            0: "#161b22",  # Vacío
+            1: "#0e4429",  # Bajo
+            2: "#006d32",  # Medio-Bajo
+            3: "#26a641",  # Medio-Alto
+            4: "#00e676"   # Alto (Verde dinámico activo)
+        }
     cargar_estilos(COLOR_PRINCIPAL, COLOR_RGBA)
 
     # --- CÁLCULO DE TIEMPO DEL OTRO USUARIO ---
@@ -699,6 +683,14 @@ def main():
         except:
             otro_estudiando = False
 
+    def circle(color):
+        return (f'<span style="display:inline-flex; align-items:center; justify-content:center; '
+                f'width:10px; height:10px; border-radius:50%; background:{color}; '
+                f'margin-right:6px; flex-shrink:0;"></span>')
+
+    circle_usuario = circle(COLOR_PRINCIPAL if usuario_estudiando else "#ffffff")
+    circle_otro = circle(COLOR_PRINCIPAL if otro_estudiando else "#ffffff")
+
     tiempo_anadido_seg = 0
     if usuario_estudiando and inicio_dt is not None:
         tiempo_anadido_seg = int((_argentina_now_global() - inicio_dt).total_seconds())
@@ -707,8 +699,10 @@ def main():
         per_min = resumen_marcas[usuario]["per_min"]
         objetivo = resumen_marcas[usuario]["obj"]
         
-        try: min_study = float(st.secrets.get("min_study", 0))
-        except (ValueError, TypeError): min_study = 0.0
+        try:
+            min_study = float(st.secrets.get("min_study", 0))
+        except (ValueError, TypeError):
+            min_study = 0.0
 
         total_min_regular = 0.0
         total_min_excluido = 0.0
@@ -740,15 +734,34 @@ def main():
     m_tot, m_rate, m_obj, total_min, progreso_en_dinero = calcular_metricas(USUARIO_ACTUAL, tiempo_anadido_seg)
     pago_objetivo = m_rate * m_obj
     progreso_pct = min(m_tot / max(1, pago_objetivo), 1.0) * 100
-
     if progreso_pct >= 100:
         COLOR_PRINCIPAL = "#ff9800"
         COLOR_RGBA = "rgba(255, 152, 0, 0.2)"
         emoji_principal = "🟠"
-        PALETTE = {0: "#161b22", 1: "#5a3200", 2: "#8a4f00", 3: "#c77700", 4: "#ff9800"}
+    
+        PALETTE = {
+            0: "#161b22",
+            1: "#5a3200",
+            2: "#8a4f00",
+            3: "#c77700",
+            4: "#ff9800"
+        }
         cargar_estilos(COLOR_PRINCIPAL, COLOR_RGBA)
     
+    # ------------------ MICRO-CELEBRACIÓN ------------------
+    if progreso_pct >= 100 and "password_triggered" not in st.session_state:
+        st.session_state.goal_completed = True
+        st.session_state.password_triggered = True
+        st.session_state.show_celebration = True
+
+    if st.session_state.get("show_celebration", False):
+        st.balloons()
+        st.session_state.show_celebration = False
+    # ---------------------------------------------------------
+
+    # Barra de progreso utiliza el color principal de la interfaz
     color_bar = COLOR_PRINCIPAL
+
     objetivo_hms = segundos_a_hms(int(m_obj * 60))
     total_hms = segundos_a_hms(int(total_min * 60))
 
@@ -759,42 +772,63 @@ def main():
         pozo_valor = 0.0
     pozo_color = "#ff1744" if round(pozo_valor) != 0 else "#aaa"
 
+    m_tot, m_rate, m_obj, total_min, progreso_en_dinero = calcular_metricas(USUARIO_ACTUAL, tiempo_anadido_seg)
+    
     paga_por_hora = m_rate * 60
-    pozo_horas_decimal = (pozo_valor / paga_por_hora) if paga_por_hora > 0 else 0.0
+    if paga_por_hora > 0:
+        pozo_horas_decimal = pozo_valor / paga_por_hora
+    else:
+        pozo_horas_decimal = 0.0
+
+    pago_objetivo = m_rate * m_obj
 
     balance_val = balance_val_ayer_raw
     if USUARIO_ACTUAL == "Facundo":
-        balance_val = -balance_val + m_tot
+        balance_val = -balance_val
+    if USUARIO_ACTUAL == "Facundo":
+        balance_val += m_tot
     balance_color = COLOR_PRINCIPAL if balance_val > 0 else "#ff1744" if balance_val < 0 else "#aaa"
-    
     if USUARIO_ACTUAL == "Facundo":
         balance_str = f"${balance_val:.2f}" if balance_val > 0 else (f"-${abs(balance_val):.2f}" if balance_val < 0 else "$0.00")
     else:
         balance_str = f"${balance_val-15000:.2f}" if balance_val-15000 > 0 else (f"-${abs(balance_val-15000):.2f}" if balance_val-15000 < 0 else "$0.00")
 
     mostrar_dinero_detallado = (USUARIO_ACTUAL == "Facundo")
+
     hora_fin_html = "<div></div>"
     
     if usuario_estudiando:
-        try: min_study = float(st.secrets.get("min_study", 0))
-        except (ValueError, TypeError): min_study = 0.0
+        try:
+            min_study = float(st.secrets.get("min_study", 0))
+        except (ValueError, TypeError):
+            min_study = 0.0
     
         total_min_regular = 0.0
         total_min_excluido = 0.0
     
         for materia, info in USERS_LOCAL[USUARIO_ACTUAL].items():
             segs = hms_a_segundos(datos[USUARIO_ACTUAL]["tiempos"][materia])
-            if materia == materia_en_curso: segs += tiempo_anadido_seg
+    
+            if materia == materia_en_curso:
+                segs += tiempo_anadido_seg
+    
             minutos = segs / 60
-            if info.get("excluir"): total_min_excluido += minutos
-            else: total_min_regular += minutos
+    
+            if info.get("excluir"):
+                total_min_excluido += minutos
+            else:
+                total_min_regular += minutos
     
         if total_min_regular >= min_study:
             minutos_restantes = m_obj - (total_min_regular + total_min_excluido)
         else:
             faltan_para_minimo = min_study - total_min_regular
             total_proyectado = min_study + total_min_excluido
-            minutos_restantes = faltan_para_minimo if total_proyectado >= m_obj else faltan_para_minimo + (m_obj - total_proyectado)
+    
+            if total_proyectado >= m_obj:
+                minutos_restantes = faltan_para_minimo
+            else:
+                minutos_restantes = faltan_para_minimo + (m_obj - total_proyectado)
     
         if minutos_restantes > 0:
             hora_fin_obj = _argentina_now_global() + timedelta(minutes=minutos_restantes)
@@ -815,13 +849,16 @@ def main():
     # --- CÁLCULO DE RACHA (STREAK) Y GITHUB COMMIT HEATMAP ---
     user_hist = datos_globales["hist_facu"] if USUARIO_ACTUAL == "Facundo" else datos_globales["hist_ivan"]
     
+    # Invertimos para contar desde el día más reciente (el último dato)
     reversed_hist = user_hist[::-1]
     streak = 0
     if reversed_hist[0] > 0:
+        # Empezó a estudiar hoy
         for val in reversed_hist:
             if val > 0: streak += 1
             else: break
     elif len(reversed_hist) > 1 and reversed_hist[1] > 0:
+        # Hoy todavía 0, pero la racha sigue viva desde ayer
         for val in reversed_hist[1:]:
             if val > 0: streak += 1
             else: break
@@ -858,22 +895,32 @@ def main():
             </div>
         """, unsafe_allow_html=True)
 
-        # --- MOSTRAR ANIMACIÓN DINÁMICA DE PARTÍCULAS POR RACHA ---
-        st.markdown(generar_particulas_racha(streak, COLOR_PRINCIPAL, usuario_estudiando or otro_estudiando), unsafe_allow_html=True)
+        # --- MOSTRAR ANIMACIÓN ---
+        if usuario_estudiando or otro_estudiando:
+            st.markdown(generar_particulas(COLOR_PRINCIPAL), unsafe_allow_html=True)
+        else:
+            st.markdown("<div style='height:1rem;'></div>", unsafe_allow_html=True)
         
         # --- HEATMAP ---
         max_val_hist = max(user_hist) if max(user_hist) > 0 else 1.0
         
         cells_html = ""
         for val in user_hist:
-            if val <= 0: level = 0
+            if val <= 0:
+                level = 0
             else:
                 ratio = val / max_val_hist
-                if ratio <= 0.25: level = 1
-                elif ratio <= 0.50: level = 2
-                elif ratio <= 0.75: level = 3
-                else: level = 4
+                if ratio <= 0.25:
+                    level = 1
+                elif ratio <= 0.50:
+                    level = 2
+                elif ratio <= 0.75:
+                    level = 3
+                else:
+                    level = 4
             color_celda = PALETTE[level]
+            
+            # Formateador de texto flotante (Tooltip)
             val_str = f"{int(val)} hs" if val == int(val) else f"{val:.1f} hs"
             cells_html += f'<div class="heatmap-cell" style="background-color: {color_celda}; width: 25px; height: 25px; border-radius: 4px;" title="{val_str}"></div>'
 
@@ -929,7 +976,7 @@ def main():
                 cargar_datos_unificados.clear()
                 st.rerun()
         
-        # --- SECCIÓN AESTHETIC ---
+        # --- SECCIÓN AESTHETIC: NO PENSAR, ACTUAR ---
         md_content = st.secrets["facundo_md"] if USUARIO_ACTUAL == "Facundo" else st.secrets["ivan_md"]
         formatted_content = markdown.markdown(md_content)
         
@@ -966,6 +1013,7 @@ def main():
             tiempo_display = tiempo_total_hms
 
         badge_html = f'<div class="status-badge status-active">{emoji_principal} Estudiando...</div>' if en_curso else ''
+        
         html_card = f"""<div class="materia-card"><div class="materia-title">{materia}</div>{badge_html}<div class="materia-time">{tiempo_display}</div></div>"""
 
         with st.container():
@@ -1000,7 +1048,7 @@ def main():
 
                         val = st.session_state.get(f"input_{sanitize_key(materia_key)}", "").strip()
                         if ":" not in val:
-                            st.error("Formato inválido (HH:MM:SS)")
+                            st.error("Formato inválido (debe ser HH:MM:SS)")
                             pedir_rerun()
                             return
 
