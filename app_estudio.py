@@ -3,6 +3,7 @@ import json
 import time
 import requests
 import markdown
+import math
 from datetime import datetime, date, timedelta, time as dt_time
 import streamlit as st
 from google.oauth2 import service_account
@@ -74,51 +75,66 @@ def cargar_estilos(color_principal="#00e676", color_principal_rgba="rgba(0, 230,
         </style>
     """, unsafe_allow_html=True)
 
-def generar_particulas(color):
-    return """
+def generar_particulas(color, streak):
+    # Cantidad de partículas según la racha
+    cantidad = min(5 + int(math.sqrt(streak) * 6), 60)
+
+    # Generar reglas CSS para cada partícula
+    reglas = ""
+    particulas = ""
+
+    for i in range(1, cantidad + 1):
+        left = random.randint(0, 100)
+        duracion = round(random.uniform(4, 8), 1)
+        delay = round(random.uniform(0, 3), 1)
+
+        reglas += f"""
+        .particle:nth-child({i}) {{
+            left: {left}%;
+            animation-duration: {duracion}s;
+            animation-delay: {delay}s;
+        }}
+        """
+
+        particulas += '<div class="particle"></div>\n'
+
+    return f"""
     <style>
-    /* Contenedor fijo para que las partículas queden de fondo */
-    .particles-container {
+    .particles-container {{
         position: fixed;
         top: 0;
         left: 0;
         width: 100vw;
         height: 100vh;
-        pointer-events: none; /* Para no interferir con los clics */
+        pointer-events: none;
         z-index: 0;
         overflow: hidden;
-    }
-    .particle {
+    }}
+
+    .particle {{
         position: absolute;
         bottom: -20px;
         width: 6px;
         height: 6px;
-        background-color: COLOR_PARTICULA;
+        background-color: {color};
         border-radius: 50%;
-        box-shadow: 0 0 10px COLOR_PARTICULA, 0 0 20px COLOR_PARTICULA;
+        box-shadow: 0 0 10px {color}, 0 0 20px {color};
         animation: floatUp 5s infinite ease-in;
         opacity: 0;
-    }
-    @keyframes floatUp {
-        0% { transform: translateY(0) scale(1); opacity: 1; }
-        100% { transform: translateY(-100vh) scale(0.5); opacity: 0; }
-    }
-    /* Partículas distribuidas y con delay para asimetría */
-    .particle:nth-child(1) { left: 15%; animation-duration: 6s; animation-delay: 0s; }
-    .particle:nth-child(2) { left: 35%; animation-duration: 5s; animation-delay: 2s; }
-    .particle:nth-child(3) { left: 55%; animation-duration: 7s; animation-delay: 1s; }
-    .particle:nth-child(4) { left: 75%; animation-duration: 4.5s; animation-delay: 3s; }
-    .particle:nth-child(5) { left: 85%; animation-duration: 8s; animation-delay: 0.5s; }
-    .particle:nth-child(6) { left: 25%; animation-duration: 5.5s; animation-delay: 1.5s; }
-    .particle:nth-child(7) { left: 65%; animation-duration: 6.5s; animation-delay: 2.5s; }
+    }}
+
+    @keyframes floatUp {{
+        0% {{ transform: translateY(0) scale(1); opacity: 1; }}
+        100% {{ transform: translateY(-100vh) scale(0.5); opacity: 0; }}
+    }}
+
+    {reglas}
     </style>
+
     <div class="particles-container">
-        <div class="particle"></div><div class="particle"></div>
-        <div class="particle"></div><div class="particle"></div>
-        <div class="particle"></div><div class="particle"></div>
-        <div class="particle"></div>
+        {particulas}
     </div>
-    """.replace("COLOR_PARTICULA", color)
+    """
 
 def _argentina_now_global():
     if ZoneInfo is not None:
@@ -897,7 +913,7 @@ def main():
 
         # --- MOSTRAR ANIMACIÓN ---
         if usuario_estudiando or otro_estudiando:
-            st.markdown(generar_particulas(COLOR_PRINCIPAL), unsafe_allow_html=True)
+            st.markdown(generar_particulas(COLOR_PRINCIPAL, streak), unsafe_allow_html=True)
         else:
             st.markdown("<div style='height:1rem;'></div>", unsafe_allow_html=True)
         
