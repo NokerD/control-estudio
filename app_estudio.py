@@ -1,10 +1,9 @@
 import re
 import json
 import time
+import math
 import requests
 import markdown
-import math
-import random
 from datetime import datetime, date, timedelta, time as dt_time
 import streamlit as st
 from google.oauth2 import service_account
@@ -76,42 +75,39 @@ def cargar_estilos(color_principal="#00e676", color_principal_rgba="rgba(0, 230,
         </style>
     """, unsafe_allow_html=True)
 
-def generar_particulas(color, streak):
-    # Cantidad de partículas según la racha
-    cantidad = min(5 + int(math.sqrt(streak) * 6), 60)
+def generar_particulas(color, streak=0):
+    cant_particulas = min(5 + int(math.sqrt(streak) * 6), 60)
+    
+    particle_styles = []
+    particle_divs = []
+    
+    for i in range(1, cant_particulas + 1):
+        # Distribución de posición, duración y delay basada en el índice
+        left = (i * 37) % 90 + 5            # Distribución horizontal entre 5% y 95%
+        duration = round(4 + (i * 1.3) % 4, 1) # Duración entre 4s y 8s
+        delay = round((i * 0.7) % 4, 1)        # Retardo entre 0s y 4s
+        
+        particle_styles.append(
+            f".particle:nth-child({i}) {{ left: {left}%; animation-duration: {duration}s; animation-delay: {delay}s; }}"
+        )
+        particle_divs.append('<div class="particle"></div>')
 
-    # Generar reglas CSS para cada partícula
-    reglas = ""
-    particulas = ""
-
-    for i in range(1, cantidad + 1):
-        left = random.randint(0, 100)
-        duracion = round(random.uniform(4, 8), 1)
-        delay = round(random.uniform(0, 3), 1)
-
-        reglas += f"""
-        .particle:nth-child({i}) {{
-            left: {left}%;
-            animation-duration: {duracion}s;
-            animation-delay: {delay}s;
-        }}
-        """
-
-        particulas += '<div class="particle"></div>\n'
+    styles_css = "\n".join(particle_styles)
+    divs_html = "\n".join(particle_divs)
 
     return f"""
     <style>
+    /* Contenedor fijo para que las partículas queden de fondo */
     .particles-container {{
         position: fixed;
         top: 0;
         left: 0;
         width: 100vw;
         height: 100vh;
-        pointer-events: none;
+        pointer-events: none; /* Para no interferir con los clics */
         z-index: 0;
         overflow: hidden;
     }}
-
     .particle {{
         position: absolute;
         bottom: -20px;
@@ -123,17 +119,15 @@ def generar_particulas(color, streak):
         animation: floatUp 5s infinite ease-in;
         opacity: 0;
     }}
-
     @keyframes floatUp {{
         0% {{ transform: translateY(0) scale(1); opacity: 1; }}
         100% {{ transform: translateY(-100vh) scale(0.5); opacity: 0; }}
     }}
-
-    {reglas}
+    /* Dynamic particles CSS */
+    {styles_css}
     </style>
-
     <div class="particles-container">
-        {particulas}
+        {divs_html}
     </div>
     """
 
