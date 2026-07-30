@@ -1,7 +1,6 @@
 import re
 import json
 import time
-import math
 import requests
 import markdown
 from datetime import datetime, date, timedelta, time as dt_time
@@ -75,30 +74,11 @@ def cargar_estilos(color_principal="#00e676", color_principal_rgba="rgba(0, 230,
         </style>
     """, unsafe_allow_html=True)
 
-def generar_particulas(color, streak=0):
-    cant_particulas = min(5 + int(math.sqrt(streak) * 6), 60)
-    
-    particle_styles = []
-    particle_divs = []
-    
-    for i in range(1, cant_particulas + 1):
-        # Distribución de posición, duración y delay basada en el índice
-        left = (i * 37) % 90 + 5            # Distribución horizontal entre 5% y 95%
-        duration = round(4 + (i * 1.3) % 4, 1) # Duración entre 4s y 8s
-        delay = round((i * 0.7) % 4, 1)        # Retardo entre 0s y 4s
-        
-        particle_styles.append(
-            f".particle:nth-child({i}) {{ left: {left}%; animation-duration: {duration}s; animation-delay: {delay}s; }}"
-        )
-        particle_divs.append('<div class="particle"></div>')
-
-    styles_css = "\n".join(particle_styles)
-    divs_html = "\n".join(particle_divs)
-
-    return f"""
+def generar_particulas(color):
+    return """
     <style>
     /* Contenedor fijo para que las partículas queden de fondo */
-    .particles-container {{
+    .particles-container {
         position: fixed;
         top: 0;
         left: 0;
@@ -107,29 +87,38 @@ def generar_particulas(color, streak=0):
         pointer-events: none; /* Para no interferir con los clics */
         z-index: 0;
         overflow: hidden;
-    }}
-    .particle {{
+    }
+    .particle {
         position: absolute;
         bottom: -20px;
         width: 6px;
         height: 6px;
-        background-color: {color};
+        background-color: COLOR_PARTICULA;
         border-radius: 50%;
-        box-shadow: 0 0 10px {color}, 0 0 20px {color};
+        box-shadow: 0 0 10px COLOR_PARTICULA, 0 0 20px COLOR_PARTICULA;
         animation: floatUp 5s infinite ease-in;
         opacity: 0;
-    }}
-    @keyframes floatUp {{
-        0% {{ transform: translateY(0) scale(1); opacity: 1; }}
-        100% {{ transform: translateY(-100vh) scale(0.5); opacity: 0; }}
-    }}
-    /* Dynamic particles CSS */
-    {styles_css}
+    }
+    @keyframes floatUp {
+        0% { transform: translateY(0) scale(1); opacity: 1; }
+        100% { transform: translateY(-100vh) scale(0.5); opacity: 0; }
+    }
+    /* Partículas distribuidas y con delay para asimetría */
+    .particle:nth-child(1) { left: 15%; animation-duration: 6s; animation-delay: 0s; }
+    .particle:nth-child(2) { left: 35%; animation-duration: 5s; animation-delay: 2s; }
+    .particle:nth-child(3) { left: 55%; animation-duration: 7s; animation-delay: 1s; }
+    .particle:nth-child(4) { left: 75%; animation-duration: 4.5s; animation-delay: 3s; }
+    .particle:nth-child(5) { left: 85%; animation-duration: 8s; animation-delay: 0.5s; }
+    .particle:nth-child(6) { left: 25%; animation-duration: 5.5s; animation-delay: 1.5s; }
+    .particle:nth-child(7) { left: 65%; animation-duration: 6.5s; animation-delay: 2.5s; }
     </style>
     <div class="particles-container">
-        {divs_html}
+        <div class="particle"></div><div class="particle"></div>
+        <div class="particle"></div><div class="particle"></div>
+        <div class="particle"></div><div class="particle"></div>
+        <div class="particle"></div>
     </div>
-    """
+    """.replace("COLOR_PARTICULA", color)
 
 def _argentina_now_global():
     if ZoneInfo is not None:
@@ -908,7 +897,7 @@ def main():
 
         # --- MOSTRAR ANIMACIÓN ---
         if usuario_estudiando or otro_estudiando:
-            st.markdown(generar_particulas(COLOR_PRINCIPAL, streak), unsafe_allow_html=True)
+            st.markdown(generar_particulas(COLOR_PRINCIPAL), unsafe_allow_html=True)
         else:
             st.markdown("<div style='height:1rem;'></div>", unsafe_allow_html=True)
         
