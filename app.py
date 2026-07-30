@@ -1,1033 +1,191 @@
-import re
-import json
-import time
-import random
-import requests
-import markdown
-from datetime import datetime, date, timedelta, time as dt_time
 import streamlit as st
-from google.oauth2 import service_account
-from google.auth.transport.requests import AuthorizedSession
-from requests.exceptions import RequestException
+import time
+import app_estudio
+import app_habitos
+import app_biblioteca
+import app_noticias
 
-# ------------------ TIMEZONE HELPERS ------------------
-try:
-    from zoneinfo import ZoneInfo
-    _HAS_ZONEINFO = True
-except Exception:
-    ZoneInfo = None
-    _HAS_ZONEINFO = False
-    try:
-        import pytz
-    except Exception:
-        pytz = None
+# 1. Configuración global  
+st.set_page_config(
+    page_title="Estudio", 
+    page_icon="📖", 
+    layout="centered",
+    initial_sidebar_state="collapsed"
+)
 
-def cargar_estilos(color_principal="#00e676", color_principal_rgba="rgba(0, 230, 118, 0.2)"):
-    st.markdown(f"""
-        <style>
-        /* Forzar modo oscuro permanente */
-        .stApp {{
-            background-color: #0e1117 !important;
-            color: #ffffff !important;
-        }}
+# 2. Inicialización de Estado de Sesión
+if "authenticated" not in st.session_state:
+    st.session_state.authenticated = False
+if "current_page" not in st.session_state:
+    st.session_state.current_page = "estudio" 
+    st.session_state.clear_cache_estudio = True # Bandera para limpiar el caché al inicio
+if "usuario_seleccionado" not in st.session_state:
+    st.session_state.usuario_seleccionado = None
+if "auto_login_done" not in st.session_state:
+    st.session_state.auto_login_done = False
+if "switching_user" not in st.session_state:
+    st.session_state.switching_user = False
+
+query_params = st.query_params
+
+# Si tiene el parámetro password, autenticamos globalmente
+if "password" in query_params:
+    st.session_state.authenticated = True
+
+# -------------------------------------------------------
+# LÓGICA DE SELECCIÓN DE USUARIO (SIN LOCKS)
+# -------------------------------------------------------
+def handle_user_login(selected_user):
+    st.session_state.usuario_seleccionado = selected_user
+    st.session_state.clear_cache_estudio = True # Limpiar caché al seleccionar usuario
+    st.rerun()
+
+# Auto-ingreso automático (Solo ocurre en la primera carga)
+if not st.session_state.auto_login_done and st.session_state.usuario_seleccionado is None:
+    st.session_state.auto_login_done = True # Marcamos para que no vuelva a forzar el ingreso si cierran sesión
+    if "password" in query_params:
+        handle_user_login("Facundo")
+    else:
+        # Cualquier otra URL (sin parámetros o con cualquier cosa que no sea password) va a Iván
+        handle_user_login("Iván")
+
+USUARIO_ACTUAL = st.session_state.get("usuario_seleccionado")
+
+# ---------------------------------------------------------
+# PANTALLA DE CARGA (TRANSICIÓN)
+# ---------------------------------------------------------
+if st.session_state.get("switching_user", False):
+    st.title("⏳ Cambiando de usuario...")
+    st.markdown("---")
+    st.warning("**Atención:** Nunca usar la aplicación en dos dispositivos a la vez.", icon="⚠️")
+    
+    # Pausa de 1.5 segundos para que se alcance a leer el cartel
+    time.sleep(1.5) 
+    
+    # Lógica para alternar el usuario directamente
+    nuevo_usuario = "Iván" if USUARIO_ACTUAL == "Facundo" else "Facundo"
+    st.session_state.usuario_seleccionado = nuevo_usuario
+    st.session_state.switching_user = False
+    st.session_state.clear_cache_estudio = True # Limpiar caché al cambiar usuario
+    st.rerun()
+
+# ---------------------------------------------------------
+# BOTÓN EN LA BARRA LATERAL (DISPARADOR)
+# ---------------------------------------------------------
+# Botón para salir/cambiar de usuario
+if USUARIO_ACTUAL is not None:
+    if st.sidebar.button("🚪 Cambiar Usuario", use_container_width=True):
+        # 1. Mostramos el mensaje directamente en la barra lateral
+        st.sidebar.warning("⚠️ **Atención:** Nunca usar la aplicación en dos dispositivos a la vez.", icon="🚫")
         
-        html, body, [class*="css"] {{ font-size: 18px !important; }}
-        h1 {{ font-size: 2.5rem !important; }}
-        h2 {{ font-size: 2rem !important; }}
-        h3 {{ font-size: 1.5rem !important; }}
-
-        /* Estilo de la tarjeta */
-        .materia-card {{
-            background-color: #262730;
-            border: 1px solid #464b5c;
-            padding: 20px;
-            border-radius: 15px;
-            margin-bottom: 20px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
-        }}
-        .materia-title {{ font-size: 1.4rem; font-weight: bold; color: #ffffff; margin-bottom: 5px; }}
+        # 2. Hacemos la pausa de 1 segundo para que se lea
+        time.sleep(1)
         
-        /* EL TIEMPO */
-        .materia-time {{ 
-            font-size: 1.6rem; 
-            font-weight: bold; 
-            color: {color_principal}; 
-            font-family: 'Courier New', monospace; 
-            margin-bottom: 15px; 
-        }}
-
-        .status-badge {{ display: inline-block; padding: 5px 10px; border-radius: 12px; font-size: 0.9rem; font-weight: bold; margin-bottom: 10px; }}
-        .status-active {{ background-color: {color_principal_rgba}; color: {color_principal}; border: 1px solid {color_principal}; }}
-
-        div.stButton > button {{ font-size: 1.2rem !important; font-weight: bold !important; border-radius: 12px !important; }}
-        .btn-grande div[data-testid="stButton"] button {{ height: 3.5rem !important; }}
-
-        div[data-testid="stColumns"] {{ align-items: flex-start !important; }}
-
-        /* ESTILO DEL HEATMAP (GITHUB) */
-        .heatmap-cell {{
-            transition: filter 0.15s ease;
-        }}
-        .heatmap-cell:hover {{
-            filter: brightness(1.3);
-            cursor: pointer;
-        }}
-        </style>
-    """, unsafe_html=True)
-
-# ------------------ SISTEMA DE PARTÍCULAS POR RACHA ------------------
-def generar_particulas_racha(streak, color_base, activo=True):
-    """
-    Genera partículas dinámicas en CSS/HTML dependiendo de la racha.
-    Niveles:
-      - Streak 0: Partículas apagadas/lentas (descanso)
-      - Streak 1-2: Tema base (Verde/Azul)
-      - Streak 3-6: Fuego Épico (Naranja/Rojo)
-      - Streak 7-13: Plasma Neón Cyberpunk (Magenta/Cian)
-      - Streak 14+: Supernova Dorado (Oro/Blanco con Aura ambiental)
-    """
-    if not activo and streak == 0:
-        return "<div style='height:1rem;'></div>"
-
-    # Definir paleta, densidad y velocidad según la racha
-    if streak == 0:
-        colors = ["#4a5568", "#718096"]
-        count = 6
-        min_speed, max_speed = 8.0, 14.0
-        aura_css = ""
-    elif streak < 3:
-        colors = [color_base, "#00e676" if color_base != "#00e676" else "#00b0ff"]
-        count = 12 if activo else 6
-        min_speed, max_speed = 5.0, 9.0
-        aura_css = ""
-    elif streak < 7:
-        colors = ["#ff9100", "#ff3d00", "#ffea00", "#ff6d00"]
-        count = 20 if activo else 10
-        min_speed, max_speed = 4.0, 8.0
-        aura_css = """
-            box-shadow: inset 0 0 60px rgba(255, 145, 0, 0.12);
-        """
-    elif streak < 14:
-        colors = ["#d500f9", "#00e5ff", "#7c4dff", "#651fff"]
-        count = 28 if activo else 14
-        min_speed, max_speed = 3.5, 7.0
-        aura_css = """
-            box-shadow: inset 0 0 80px rgba(213, 0, 249, 0.15);
-        """
-    else:  # 14+ Dios de la Racha
-        colors = ["#ffd700", "#ffab00", "#ffffff", "#ff6d00", "#00e5ff"]
-        count = 38 if activo else 18
-        min_speed, max_speed = 2.5, 6.0
-        aura_css = """
-            box-shadow: inset 0 0 100px rgba(255, 215, 0, 0.2), inset 0 0 30px rgba(255, 255, 255, 0.15);
-        """
-
-    particles_html = ""
-    css_rules = ""
-
-    # Generar partículas con aleatoriedad determinista/estética
-    random.seed(42 + streak)  # Mantener consistencia suave entre renders
-    
-    for i in range(count):
-        c = random.choice(colors)
-        size = random.randint(3, 11 if streak >= 7 else 8)
-        left = random.randint(2, 98)
-        duration = round(random.uniform(min_speed, max_speed), 2)
-        delay = round(random.uniform(0.0, 5.0), 2)
-        sway_dir = random.choice([-1, 1]) * random.randint(15, 45)
-        blur = random.choice([0, 0, 2, 4])  # Efecto BOKEH (algunas desenfocadas)
-        opacity = round(random.uniform(0.4, 0.95), 2)
-
-        p_class = f"p-{i}"
+        # 3. Alternamos el usuario directamente
+        nuevo_usuario = "Iván" if USUARIO_ACTUAL == "Facundo" else "Facundo"
+        st.session_state.usuario_seleccionado = nuevo_usuario
+        st.session_state.current_page = "estudio"
+        st.session_state.clear_cache_estudio = True # Limpiar caché al volver a estudio
         
-        css_rules += f"""
-        .{p_class} {{
-            left: {left}%;
-            width: {size}px;
-            height: {size}px;
-            background-color: {c};
-            box-shadow: 0 0 {size*2}px {c}, 0 0 {size*4}px {c};
-            filter: blur({blur}px);
-            opacity: {opacity};
-            animation: floatSway_{i} {duration}s infinite ease-in-out;
-            animation-delay: {delay}s;
-        }}
-        @keyframes floatSway_{i} {{
-            0% {{ transform: translateY(0) translateX(0) scale(1); opacity: 0; }}
-            20% {{ opacity: {opacity}; }}
-            80% {{ opacity: {opacity * 0.7}; }}
-            100% {{ transform: translateY(-105vh) translateX({sway_dir}px) scale(0.3); opacity: 0; }}
-        }}
-        """
-        particles_html += f'<div class="particle {p_class}"></div>'
-
-    html_code = f"""
-    <style>
-    .particles-container {{
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100vw;
-        height: 100vh;
-        pointer-events: none;
-        z-index: 0;
-        overflow: hidden;
-        {aura_css}
-    }}
-    .particle {{
-        position: absolute;
-        bottom: -30px;
-        border-radius: 50%;
-    }}
-    {css_rules}
-    </style>
-    <div class="particles-container">
-        {particles_html}
-    </div>
-    """
-    return html_code
-
-def _argentina_now_global():
-    if ZoneInfo is not None:
-        return datetime.now(ZoneInfo('America/Argentina/Cordoba'))
-    if 'pytz' in globals() and pytz is not None:
-        return datetime.now(pytz.timezone('America/Argentina/Cordoba'))
-    return datetime.now()
-
-def ahora_str():
-    dt = _argentina_now_global()
-    try:
-        return dt.isoformat(sep=" ", timespec="seconds")
-    except:
-        return dt.strftime("%Y-%m-%d %H:%M:%S")
-
-def parse_datetime(s):
-    if not s or str(s).strip() == "":
-        raise ValueError("Marca vacía")
-    s = str(s).strip()
-    TZ = _argentina_now_global().tzinfo
-    try:
-        dt = datetime.fromisoformat(s.replace("Z", "+00:00"))
-        if dt.tzinfo is None:
-            return dt.replace(tzinfo=TZ)
-        return dt.astimezone(TZ)
-    except:
-        pass
-    fmts = ["%Y-%m-%d %H:%M:%S%z", "%Y-%m-%dT%H:%M:%S%z", "%Y-%m-%d %H:%M:%S"]
-    for fmt in fmts:
-        try:
-            dt = datetime.strptime(s, fmt)
-            if dt.tzinfo is None:
-                return dt.replace(tzinfo=TZ)
-            return dt.astimezone(TZ)
-        except:
-            continue
-    raise ValueError(f"Formato inválido: {s}")
-
-def hms_a_segundos(hms):
-    if not hms: return 0
-    try:
-        h, m, s = map(int, hms.split(":"))
-        return h*3600 + m*60 + s
-    except:
-        return 0
-
-def segundos_a_hms(seg):
-    h = seg // 3600
-    m = (seg % 3600) // 60
-    s = seg % 60
-    return f"{h:02d}:{m:02d}:{s:02d}"
-
-def hms_a_minutos(hms): return hms_a_segundos(hms) / 60
-def parse_float_or_zero(s):
-    if s is None: return 0.0
-    try: return float(str(s).replace(",", ".").strip())
-    except: return 0.0
-
-def parse_time_cell_to_seconds(val):
-    if val is None: return 0
-    s = str(val).strip()
-    if s == "": return 0
-    if ":" in s:
-        try: return hms_a_segundos(s)
-        except: return 0
-    try:
-        f = float(s.replace(",", "."))
-        if 0 <= f <= 1:
-            return int(f * 86400)
-        return int(f)
-    except:
-        return 0
-
-def replace_row_in_range(range_str, new_row):
-    if not isinstance(range_str, str): return range_str
-    return re.sub(r'(\d+)(\s*$)', str(new_row), range_str)
-
-def sanitize_key(s):
-    return re.sub(r'[^a-zA-Z0-9_]', '_', s)
-
-# ------------------ RERUN HELPER ------------------
-def pedir_rerun():
-    st.session_state["_do_rerun"] = True
-
-# ------------------ GOOGLE SHEETS SESSION ------------------
-@st.cache_resource
-def get_sheets_session():
-    try:
-        key_dict = json.loads(st.secrets["service_account"])
-    except Exception as e:
-        st.error(f"Error leyendo st.secrets['service_account']")
-        st.stop()
-    try:
-        creds = service_account.Credentials.from_service_account_info(
-            key_dict,
-            scopes=["https://www.googleapis.com/auth/spreadsheets"]
-        )
-        return AuthorizedSession(creds)
-    except Exception as e:
-        st.error(f"Error creando credenciales")
-        st.stop()
-
-session = get_sheets_session()
-
-def sheets_batch_get(spreadsheet_id, ranges):
-    url = f"https://sheets.googleapis.com/v4/spreadsheets/{spreadsheet_id}/values:batchGet"
-    unique_ranges = list(dict.fromkeys(ranges))
-    params = []
-    for r in unique_ranges:
-        params.append(("ranges", r))
-    params.append(("valueRenderOption", "FORMATTED_VALUE"))
-    try:
-        resp = session.get(url, params=params, timeout=30)
-        resp.raise_for_status()
-        data = resp.json()
-        ordered_results = data.get("valueRanges", [])
-        result_map = {r: res for r, res in zip(unique_ranges, ordered_results)}
-        final_list = []
-        for r in ranges:
-            if r in result_map:
-                final_list.append(result_map[r])
-            else:
-                final_list.append({})
-        return {"valueRanges": final_list}
-    except RequestException as e:
-        raise RuntimeError(f"Error HTTP en batchGet al leer la hoja: {e}")
-
-def sheets_batch_update(spreadsheet_id, updates):
-    url = f"https://sheets.googleapis.com/v4/spreadsheets/{spreadsheet_id}/values:batchUpdate"
-    data = {
-        "valueInputOption": "USER_ENTERED",
-        "data": [{"range": r, "values": [[v]]} for r, v in updates]
-    }
-    try:
-        resp = session.post(url, json=data, timeout=30)
-        resp.raise_for_status()
-        return resp.json()
-    except RequestException as e:
-        raise RuntimeError(f"Error HTTP en batchUpdate al escribir en la hoja: {e}")
-
-# ------------------ CONSTANTES ESTRUCTURALES (FIJAS) ------------------
-FILA_BASE = 5
-FILA_BASE2 = 10
-FECHA_BASE = date(2026, 1, 1)
-SHEET_FACUNDO = "F. Economía"
-SHEET_IVAN = "I. Física"
-SHEET_MARCAS = "marcas"
-
-RANGO_FECHA_MAIL = f"'{SHEET_MARCAS}'!Z1"
-RANGO_LOCK_IVAN = f"'{SHEET_MARCAS}'!Z2"
-RANGO_LOCK_FACUNDO = f"'{SHEET_MARCAS}'!Z3"
-RANGO_FECHA_MAIL_VAGO = f"'{SHEET_MARCAS}'!Z12" 
-
-# ------------------ CONFIGURACIÓN DINÁMICA DEL DÍA ------------------
-def get_day_config(target_date=None):
-    if target_date is None:
-        target_date = _argentina_now_global().date()
-    
-    delta = (target_date - FECHA_BASE).days
-    time_row = FILA_BASE + delta
-    time_row2 = FILA_BASE2 + delta
-    
-    users_dict = {
-        "Facundo": {
-            "Trabajo":         {"time": f"'{SHEET_FACUNDO}'!B{time_row2}", "est": f"'{SHEET_MARCAS}'!Z10", "excluir": True},
-            "Cursado":         {"time": f"'{SHEET_FACUNDO}'!C{time_row2}", "est": f"'{SHEET_MARCAS}'!Z14", "excluir": True},
-            "Estadística I":    {"time": f"'{SHEET_FACUNDO}'!D{time_row2}", "est": f"'{SHEET_MARCAS}'!Z4"},
-            "Int. Contabilidad":    {"time": f"'{SHEET_FACUNDO}'!E{time_row2}", "est": f"'{SHEET_MARCAS}'!Z5"},
-            "Sociología": {"time": f"'{SHEET_FACUNDO}'!F{time_row2}", "est": f"'{SHEET_MARCAS}'!Z6"},
-            "Derecho Público":        {"time": f"'{SHEET_FACUNDO}'!G{time_row2}", "est": f"'{SHEET_MARCAS}'!Z7"},
-        },
-        "Iván": {
-            "Física":   {"time": f"'{SHEET_IVAN}'!B{time_row}", "est": f"'{SHEET_MARCAS}'!Z8"},
-            "Análisis": {"time": f"'{SHEET_IVAN}'!C{time_row}", "est": f"'{SHEET_MARCAS}'!Z9"},
-            "Álgebra": {"time": f"'{SHEET_IVAN}'!D{time_row}", "est": f"'{SHEET_MARCAS}'!Z13"},
-        }
-    }
-    
-    return {
-        "TIME_ROW": time_row,
-        "USERS": users_dict,
-        "WEEK_RANGE": f"'{SHEET_MARCAS}'!R{time_row-2}",
-        "RANGO_RATE_FACU": f"'{SHEET_MARCAS}'!C{time_row-2}",
-        "RANGO_RATE_IVAN": f"'{SHEET_MARCAS}'!B{time_row-2}",
-        "RANGO_OBJ_FACU": f"'{SHEET_MARCAS}'!P{time_row-2}",
-        "RANGO_OBJ_IVAN": f"'{SHEET_MARCAS}'!O{time_row-2}",
-        "RANGO_CHECK_IVAN": f"'{SHEET_MARCAS}'!H{time_row-2}",
-        "RANGO_CHECK_FACU": f"'{SHEET_MARCAS}'!I{time_row-2}",
-        "RANGO_POZO_IVAN": f"'{SHEET_MARCAS}'!W{time_row-2}",
-        "RANGO_POZO_FACU": f"'{SHEET_MARCAS}'!X{time_row-2}",
-    }
-
-# ------------------ CARGA UNIFICADA (cacheada por fecha) ------------------
-@st.cache_data()
-def cargar_datos_unificados(fecha_str):
-    cfg = get_day_config()
-    USERS_LOCAL = cfg["USERS"]
-    
-    yesterday = _argentina_now_global().date() - timedelta(days=1)
-    cfg_yesterday = get_day_config(yesterday)
-    
-    all_ranges = []
-    mapa_indices = {
-        "materias": {}, 
-        "rates": {}, 
-        "objs": {}, 
-        "checks": {}, 
-        "week": None, 
-        "week_ayer": None, 
-        "mail_date": None, 
-        "mail_vago": None,
-        "hist_facu": None,
-        "hist_ivan": None
-    }
-    idx = 0
-    
-    for user, materias in USERS_LOCAL.items():
-        for m, info in materias.items():
-            all_ranges.append(info["est"]); mapa_indices["materias"][(user, m, "est")] = idx; idx += 1
-            all_ranges.append(info["time"]); mapa_indices["materias"][(user, m, "time")] = idx; idx += 1
-    
-    all_ranges.append(cfg["RANGO_RATE_FACU"]); mapa_indices["rates"]["Facundo"] = idx; idx += 1
-    all_ranges.append(cfg["RANGO_RATE_IVAN"]); mapa_indices["rates"]["Iván"] = idx; idx += 1
-    all_ranges.append(cfg["RANGO_OBJ_FACU"]); mapa_indices["objs"]["Facundo"] = idx; idx += 1
-    all_ranges.append(cfg["RANGO_OBJ_IVAN"]); mapa_indices["objs"]["Iván"] = idx; idx += 1
-    all_ranges.append(cfg["WEEK_RANGE"]); mapa_indices["week"] = idx; idx += 1
-    all_ranges.append(cfg_yesterday["WEEK_RANGE"]); mapa_indices["week_ayer"] = idx; idx += 1
-    
-    all_ranges.append(RANGO_FECHA_MAIL); mapa_indices["mail_date"] = idx; idx += 1
-    all_ranges.append(RANGO_FECHA_MAIL_VAGO); mapa_indices["mail_vago"] = idx; idx += 1
-    
-    all_ranges.append(cfg["RANGO_CHECK_IVAN"]); mapa_indices["checks"]["Iván"] = idx; idx += 1
-    all_ranges.append(cfg["RANGO_CHECK_FACU"]); mapa_indices["checks"]["Facundo"] = idx; idx += 1
-
-    all_ranges.append(cfg["RANGO_POZO_IVAN"]); mapa_indices["pozo_ivan"] = idx; idx += 1
-    all_ranges.append(cfg["RANGO_POZO_FACU"]); mapa_indices["pozo_facu"] = idx; idx += 1
-
-    # --- HISTORIAL ÚLTIMOS 30 DÍAS ---
-    target_date = datetime.strptime(fecha_str, "%Y-%m-%d").date()
-    delta_today = (target_date - FECHA_BASE).days
-
-    row_end_facu = FILA_BASE2 + delta_today
-    row_start_facu = max(FILA_BASE2, row_end_facu - 29)
-    range_hist_facu = f"'{SHEET_FACUNDO}'!H{row_start_facu}:H{row_end_facu}"
-
-    row_end_ivan = FILA_BASE + delta_today
-    row_start_ivan = max(FILA_BASE, row_end_ivan - 29)
-    range_hist_ivan = f"'{SHEET_IVAN}'!G{row_start_ivan}:G{row_end_ivan}"
-
-    all_ranges.append(range_hist_facu); mapa_indices["hist_facu"] = idx; idx += 1
-    all_ranges.append(range_hist_ivan); mapa_indices["hist_ivan"] = idx; idx += 1
-
-    try:
-        res = sheets_batch_get(st.secrets["sheet_id"], all_ranges)
-    except Exception as e:
-        st.error(f"Error API Google Sheets: {e}")
-        st.stop()
-
-    values = res.get("valueRanges", [])
-    
-    def get_val(i, default=""):
-        if i >= len(values): return default
-        vr = values[i]; rows = vr.get("values", [])
-        if not rows: return default
-        return rows[0][0] if rows[0] else default
-
-    def get_list_val(i, default_len=30):
-        if i >= len(values): return [0.0] * default_len
-        vr = values[i]
-        rows = vr.get("values", [])
-        float_list = []
-        for r in rows:
-            val = r[0] if r else "0"
-            float_list.append(parse_float_or_zero(val))
-        
-        while len(float_list) < default_len:
-            float_list.insert(0, 0.0)
-        return float_list[:default_len]
-
-    data_usuarios = {u: {"estado": {}, "tiempos": {}, "inicio_dt": None, "materia_activa": None} for u in USERS_LOCAL}
-    materia_en_curso = None
-    inicio_dt = None
-
-    for user, materias in USERS_LOCAL.items():
-        for m in materias:
-            idx_est = mapa_indices["materias"][(user, m, "est")]
-            raw_est = get_val(idx_est)
-            data_usuarios[user]["estado"][m] = raw_est
-
-            idx_time = mapa_indices["materias"][(user, m, "time")]
-            raw_time = get_val(idx_time)
-            secs = parse_time_cell_to_seconds(raw_time)
-            data_usuarios[user]["tiempos"][m] = segundos_a_hms(secs)
-
-            if user == st.session_state.get("usuario_seleccionado") and str(raw_est).strip() != "":
-                try:
-                    inicio_dt = parse_datetime(raw_est)
-                    materia_en_curso = m
-                except Exception:
-                    pass
-
-    resumen = {
-        "Facundo": {"per_min": parse_float_or_zero(get_val(mapa_indices["rates"]["Facundo"])), "obj": parse_float_or_zero(get_val(mapa_indices["objs"]["Facundo"]))},
-        "Iván": {"per_min": parse_float_or_zero(get_val(mapa_indices["rates"]["Iván"])), "obj": parse_float_or_zero(get_val(mapa_indices["objs"]["Iván"]))}
-    }
-    raw_week = get_val(mapa_indices["week"], "0")
-    balance_val = parse_float_or_zero(raw_week)
-    
-    raw_week_ayer = get_val(mapa_indices["week_ayer"], "0")
-    balance_val_ayer = parse_float_or_zero(raw_week_ayer)
-    
-    last_mail_date = get_val(mapa_indices["mail_date"], "")
-    last_mail_vago = get_val(mapa_indices["mail_vago"], "")
-
-    checks_data = {
-        "Iván": get_val(mapa_indices["checks"]["Iván"], ""),
-        "Facundo": get_val(mapa_indices["checks"]["Facundo"], "")
-    }
-
-    pozo_ivan_val = parse_float_or_zero(get_val(mapa_indices["pozo_ivan"]))
-    pozo_facu_val = parse_float_or_zero(get_val(mapa_indices["pozo_facu"]))
-
-    hist_facu_vals = get_list_val(mapa_indices["hist_facu"])
-    hist_ivan_vals = get_list_val(mapa_indices["hist_ivan"])
-
-    if "usuario_seleccionado" in st.session_state:
-        st.session_state["materia_activa"] = materia_en_curso
-        st.session_state["inicio_dt"] = inicio_dt
-
-    return {
-        "users_data": data_usuarios, 
-        "resumen": resumen, 
-        "balance": balance_val,
-        "balance_ayer": balance_val_ayer,
-        "last_mail_date": last_mail_date,
-        "last_mail_vago": last_mail_vago,
-        "checks": checks_data,
-        "pozo_ivan": pozo_ivan_val,
-        "pozo_facu": pozo_facu_val,
-        "hist_facu": hist_facu_vals,
-        "hist_ivan": hist_ivan_vals
-    }
-
-def batch_write(updates):
-    try:
-        sheets_batch_update(st.secrets["sheet_id"], updates)
-        cargar_datos_unificados.clear()
-    except Exception as e:
-        st.error(f"Error escribiendo Google Sheets: {e}")
-        st.stop()
-
-# ------------------ CALLBACKS ACTUALIZADOS ------------------
-def start_materia_callback(usuario, materia):
-    try:
-        cfg = get_day_config()
-        info = cfg["USERS"][usuario][materia]
-        
-        now_str = ahora_str()
-        updates = [(info["est"], now_str)] + [
-            (m_datos["est"], "")
-            for m_datos in cfg["USERS"][usuario].values()
-            if m_datos is not None and m_datos is not info
-        ]
-        batch_write(updates)
-        st.session_state["materia_activa"] = materia
-        st.session_state["inicio_dt"] = parse_datetime(now_str)
-    except Exception as e:
-        st.error(f"start_materia error: {e}")
-    finally:
-        pedir_rerun()
-
-def stop_materia_callback(usuario, materia):
-    try:
-        cfg = get_day_config()
-        info = cfg["USERS"][usuario][materia]
-        
-        inicio = st.session_state.get("inicio_dt")
-        if inicio is None or st.session_state.get("materia_activa") != materia:
-            try:
-                res = sheets_batch_get(st.secrets["sheet_id"], [info["est"]])
-                vr = res.get("valueRanges", [{}])[0]
-                prev_est = vr.get("values", [[""]])[0][0] if vr.get("values") else ""
-                if not prev_est:
-                      st.error("No hay marca de inicio registrada.")
-                      pedir_rerun()
-                      return
-                inicio = parse_datetime(prev_est)
-            except Exception as e:
-                 st.error(f"Error leyendo marca de inicio: {e}")
-                 pedir_rerun()
-                 return
-
-        fin = _argentina_now_global()
-        if fin <= inicio:
-            st.error("Tiempo inválido.")
-            batch_write([(info["est"], "")])
-            pedir_rerun()
-            return
-
-        midnight = datetime.combine(inicio.date() + timedelta(days=1), dt_time(0,0)).replace(tzinfo=inicio.tzinfo)
-        partes = []
-        if inicio.date() == fin.date():
-            partes.append((inicio, fin))
-        else:
-            partes.append((inicio, midnight))
-            partes.append((midnight, fin))
-
-        updates = []
-        for (p_inicio, p_fin) in partes:
-            segs = int((p_fin - p_inicio).total_seconds())
+        if len(st.query_params) > 0:
+            st.query_params.clear()
             
-            base_correcta = FILA_BASE2 if usuario == "Facundo" else FILA_BASE
-            target_row = base_correcta + (p_inicio.date() - FECHA_BASE).days
-            
-            current_time_range = cfg["USERS"][usuario][materia]["time"]
-            time_cell_for_row = replace_row_in_range(current_time_range, target_row)
-            
-            try:
-                res2 = sheets_batch_get(st.secrets["sheet_id"], [time_cell_for_row])
-                vr2 = res2.get("valueRanges", [{}])[0]
-                prev_raw = vr2.get("values", [[""]])[0][0] if vr2.get("values") else ""
-            except:
-                prev_raw = ""
-            new_secs = parse_time_cell_to_seconds(prev_raw) + segs
-            updates.append((time_cell_for_row, segundos_a_hms(new_secs)))
-
-        updates.append((info["est"], ""))
-        batch_write(updates)
-        st.session_state["materia_activa"] = None
-        st.session_state["inicio_dt"] = None
-    except Exception as e:
-        st.error(f"stop_materia error: {e}")
-    finally:
-        pedir_rerun()
-
-def main():
-    if st.session_state.get("clear_cache_estudio", False):
-        cargar_datos_unificados.clear()
-        st.session_state["clear_cache_estudio"] = False
-
-    if st.session_state.get("_do_rerun", False):
-        st.session_state["_do_rerun"] = False
+        # 4. Recargamos la aplicación
         st.rerun()
-        
-    if "usuario_seleccionado" not in st.session_state or st.session_state["usuario_seleccionado"] not in ["Facundo", "Iván"]:
-        st.error("Error: Usuario no seleccionado en la sesión.")
-        st.stop()
-        
-    # --- Carga de datos ---
-    hoy_str = _argentina_now_global().strftime("%Y-%m-%d")
-    datos_globales = cargar_datos_unificados(hoy_str)
+
+# ---------------------------------------------------------
+# SELECCIÓN DE USUARIO (INTERFAZ)
+# ---------------------------------------------------------
+if st.session_state.usuario_seleccionado is None:
+    st.title("Selección de Usuario")
     
-    cfg = get_day_config()
-    USERS_LOCAL = cfg["USERS"]
+    col1, col2 = st.columns(2)
     
-    datos = datos_globales["users_data"]
-    resumen_marcas = datos_globales["resumen"]
-    balance_val_raw = datos_globales["balance"]
-    balance_val_ayer_raw = datos_globales["balance_ayer"]
-    last_mail_date_str = datos_globales["last_mail_date"]
-    last_mail_vago_str = datos_globales["last_mail_vago"]
-    checks_data = datos_globales["checks"]
+    with col1:
+        if st.button("👤 Facundo", key="btn_facundo", use_container_width=True):
+            handle_user_login("Facundo")
 
-    pozo_ivan = datos_globales["pozo_ivan"]
-    pozo_facu = datos_globales["pozo_facu"]
+    with col2:
+        if st.button("👤 Iván", key="btn_ivan", use_container_width=True):
+            handle_user_login("Iván")
 
-    USUARIO_ACTUAL = st.session_state["usuario_seleccionado"]
-    OTRO_USUARIO = "Iván" if USUARIO_ACTUAL == "Facundo" else "Facundo"
+    # --- El cartel de advertencia ---
+    st.markdown("---") # Una línea divisoria para separar
+    st.warning("⚠️ **Atención:** Nunca usar la aplicación en dos dispositivos a la vez.", icon="🚫")
 
-    materia_en_curso = st.session_state.get("materia_activa")
-    inicio_dt = st.session_state.get("inicio_dt")
+    st.stop() 
 
-    if materia_en_curso is None:
-        for m, est_raw in datos[USUARIO_ACTUAL]["estado"].items():
-            if str(est_raw).strip() != "":
-                try:
-                    inicio_dt_sheet = parse_datetime(est_raw)
-                    st.session_state["materia_activa"] = m
-                    st.session_state["inicio_dt"] = inicio_dt_sheet
-                    materia_en_curso = m
-                    inicio_dt = inicio_dt_sheet
-                except Exception:
-                    pass
-                break
+# ---------------------------------------------------------
+# NAVEGACIÓN EN SIDEBAR
+# ---------------------------------------------------------
 
-    usuario_estudiando = materia_en_curso is not None
-    materia_otro = next((m for m, v in datos[OTRO_USUARIO]["estado"].items() if str(v).strip() != ""), "")
-    otro_estudiando = materia_otro != ""
+# Variable estricta para permisos de administrador:
+is_admin = (st.session_state.usuario_seleccionado == "Facundo") and st.session_state.authenticated
 
-    # --- CONFIGURACIÓN DE COLOR SEGÚN EL OTRO Y UNO MISMO ---
-    if usuario_estudiando and otro_estudiando:
-        COLOR_PRINCIPAL = "#00b0ff"
-        COLOR_RGBA = "rgba(0, 176, 255, 0.2)"
-        emoji_principal = "🔵"
-        PALETTE = {0: "#161b22", 1: "#0a3054", 2: "#004d80", 3: "#007acc", 4: "#00b0ff"}
-    else:
-        COLOR_PRINCIPAL = "#00e676"
-        COLOR_RGBA = "rgba(0, 230, 118, 0.2)"
-        emoji_principal = "🟢"
-        PALETTE = {0: "#161b22", 1: "#0e4429", 2: "#006d32", 3: "#26a641", 4: "#00e676"}
-    cargar_estilos(COLOR_PRINCIPAL, COLOR_RGBA)
+# --- Botón para ir a ESTUDIO ---
+if st.session_state.current_page != "estudio":
+    if st.sidebar.button("📖 Estudio", use_container_width=True):
+        st.session_state.current_page = "estudio"
+        st.session_state.clear_cache_estudio = True # Limpiar caché al entrar a la página
+        st.rerun()
 
-    # --- CÁLCULO DE TIEMPO DEL OTRO USUARIO ---
-    tiempo_otro_hms = ""
-    tiempo_otro_seg = 0
-    if otro_estudiando:
-        try:
-            inicio_otro = parse_datetime(datos[OTRO_USUARIO]["estado"][materia_otro])
-            tiempo_otro_seg = int((_argentina_now_global() - inicio_otro).total_seconds())
-            tiempo_otro_hms = segundos_a_hms(tiempo_otro_seg)
-        except:
-            otro_estudiando = False
+# --- Botón para ir a HÁBITOS ---
+if is_admin and st.session_state.current_page != "habitos":
+    if st.sidebar.button("📅 Hábitos", use_container_width=True):
+        st.session_state.current_page = "habitos"
+        st.rerun()
 
-    tiempo_anadido_seg = 0
-    if usuario_estudiando and inicio_dt is not None:
-        tiempo_anadido_seg = int((_argentina_now_global() - inicio_dt).total_seconds())
+# --------------------------------------------------------
+# ROUTER (Decide qué app mostrar)
+# --------------------------------------------------------
 
-    def calcular_metricas(usuario, tiempo_activo_seg_local=0):
-        per_min = resumen_marcas[usuario]["per_min"]
-        objetivo = resumen_marcas[usuario]["obj"]
-        
-        try: min_study = float(st.secrets.get("min_study", 0))
-        except (ValueError, TypeError): min_study = 0.0
-
-        total_min_regular = 0.0
-        total_min_excluido = 0.0
-
-        for materia, info in USERS_LOCAL[usuario].items():
-            base_seg = hms_a_segundos(datos[usuario]["tiempos"][materia])
-            segs_materia = base_seg
-            
-            if usuario_estudiando and usuario == USUARIO_ACTUAL and materia == materia_en_curso:
-                segs_materia += tiempo_activo_seg_local
-            
-            mins_materia = segs_materia / 60
-
-            if info.get("excluir"):
-                total_min_excluido += mins_materia
-            else:
-                total_min_regular += mins_materia
-
-        if total_min_regular >= min_study:
-            total_min = total_min_regular + total_min_excluido
+if st.session_state.current_page == "habitos":
+    if not is_admin:
+        if st.session_state.usuario_seleccionado != "Facundo":
+            st.error("Solo Facundo tiene permisos para acceder a esta sección.")
+            st.stop()
         else:
-            total_min = total_min_regular
-
-        progreso_en_dinero = (tiempo_activo_seg_local / 60) * per_min
-        m_tot = total_min * per_min
-        
-        return m_tot, per_min, objetivo, total_min, progreso_en_dinero
-
-    m_tot, m_rate, m_obj, total_min, progreso_en_dinero = calcular_metricas(USUARIO_ACTUAL, tiempo_anadido_seg)
-    pago_objetivo = m_rate * m_obj
-    progreso_pct = min(m_tot / max(1, pago_objetivo), 1.0) * 100
-
-    if progreso_pct >= 100:
-        COLOR_PRINCIPAL = "#ff9800"
-        COLOR_RGBA = "rgba(255, 152, 0, 0.2)"
-        emoji_principal = "🟠"
-        PALETTE = {0: "#161b22", 1: "#5a3200", 2: "#8a4f00", 3: "#c77700", 4: "#ff9800"}
-        cargar_estilos(COLOR_PRINCIPAL, COLOR_RGBA)
-    
-    color_bar = COLOR_PRINCIPAL
-    objetivo_hms = segundos_a_hms(int(m_obj * 60))
-    total_hms = segundos_a_hms(int(total_min * 60))
-
-    pozo_valor = pozo_facu if USUARIO_ACTUAL == "Facundo" else pozo_ivan
-    pozo_valor -= m_tot
-    if pozo_valor < 0:
-        m_tot += pozo_valor
-        pozo_valor = 0.0
-    pozo_color = "#ff1744" if round(pozo_valor) != 0 else "#aaa"
-
-    paga_por_hora = m_rate * 60
-    pozo_horas_decimal = (pozo_valor / paga_por_hora) if paga_por_hora > 0 else 0.0
-
-    balance_val = balance_val_ayer_raw
-    if USUARIO_ACTUAL == "Facundo":
-        balance_val = -balance_val + m_tot
-    balance_color = COLOR_PRINCIPAL if balance_val > 0 else "#ff1744" if balance_val < 0 else "#aaa"
-    
-    if USUARIO_ACTUAL == "Facundo":
-        balance_str = f"${balance_val:.2f}" if balance_val > 0 else (f"-${abs(balance_val):.2f}" if balance_val < 0 else "$0.00")
-    else:
-        balance_str = f"${balance_val-15000:.2f}" if balance_val-15000 > 0 else (f"-${abs(balance_val-15000):.2f}" if balance_val-15000 < 0 else "$0.00")
-
-    mostrar_dinero_detallado = (USUARIO_ACTUAL == "Facundo")
-    hora_fin_html = "<div></div>"
-    
-    if usuario_estudiando:
-        try: min_study = float(st.secrets.get("min_study", 0))
-        except (ValueError, TypeError): min_study = 0.0
-    
-        total_min_regular = 0.0
-        total_min_excluido = 0.0
-    
-        for materia, info in USERS_LOCAL[USUARIO_ACTUAL].items():
-            segs = hms_a_segundos(datos[USUARIO_ACTUAL]["tiempos"][materia])
-            if materia == materia_en_curso: segs += tiempo_anadido_seg
-            minutos = segs / 60
-            if info.get("excluir"): total_min_excluido += minutos
-            else: total_min_regular += minutos
-    
-        if total_min_regular >= min_study:
-            minutos_restantes = m_obj - (total_min_regular + total_min_excluido)
-        else:
-            faltan_para_minimo = min_study - total_min_regular
-            total_proyectado = min_study + total_min_excluido
-            minutos_restantes = faltan_para_minimo if total_proyectado >= m_obj else faltan_para_minimo + (m_obj - total_proyectado)
-    
-        if minutos_restantes > 0:
-            hora_fin_obj = _argentina_now_global() + timedelta(minutes=minutos_restantes)
-            hora_fin_html = f'<div style="color:#aaa;">Terminás a las {hora_fin_obj.strftime("%H:%M")}</div>'
-
-    if mostrar_dinero_detallado:
-        pozo_html = f'<strong>{pozo_horas_decimal:.2f}hs</strong> <span style="color:#666; margin-left:4px;">(${pozo_valor:.2f})</span>'
-        total_html = f'{total_hms} | ${m_tot:.2f}'
-        balance_html = f'<div>Balance: <span style="color:{balance_color};">{balance_str}</span></div>'
-        objetivo_html = f'<div>{objetivo_hms} | ${pago_objetivo:.2f}</div>'
-    else:
-        pozo_html = f'<strong>{pozo_horas_decimal:.2f}hs</strong>'
-        total_html = f'{total_hms}'
-        balance_html = hora_fin_html
-        hora_fin_html = f'<div></div>'
-        objetivo_html = f'<div>{objetivo_hms}</div>'
-
-    # --- CÁLCULO DE RACHA (STREAK) Y GITHUB COMMIT HEATMAP ---
-    user_hist = datos_globales["hist_facu"] if USUARIO_ACTUAL == "Facundo" else datos_globales["hist_ivan"]
-    
-    reversed_hist = user_hist[::-1]
-    streak = 0
-    if reversed_hist[0] > 0:
-        for val in reversed_hist:
-            if val > 0: streak += 1
-            else: break
-    elif len(reversed_hist) > 1 and reversed_hist[1] > 0:
-        for val in reversed_hist[1:]:
-            if val > 0: streak += 1
-            else: break
-
-    if streak > 1:
-        streak_html = f'<div style="display:flex; align-items:center; gap: 4px;"><span style="font-size: 0.9rem;">🔥</span><span style="color: #ff9800; font-weight: bold; font-size: 0.9rem;">Racha: {streak} días</span></div>'
-    elif streak == 1:
-        streak_html = f'<div style="display:flex; align-items:center; gap: 4px;"><span style="font-size: 0.9rem;">🔥</span><span style="color: #ff9800; font-weight: bold; font-size: 0.9rem;">Racha: {streak} día</span></div>'
-    else:
-        streak_html = f'<div></div>'
-        
-    # --- Actualizar Placeholder Global ---
-    with st.container():
-        st.markdown(f"""
-            <div style="background-color: #1e1e1e; padding: 15px; border-radius: 10px; position: relative; z-index: 10;">
-                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 12px;">
-                    {streak_html}
-                    <div style="display:flex; align-items:center; gap:6px; font-size:0.9rem;">
-                        <span style="color:#aaa;">Deuda:</span>
-                        <span style="color:{pozo_color};">
-                            {pozo_html}
-                        </span>
-                    </div>
-                </div>
-                <div style="width: 100%; font-size: 2.2rem; font-weight: bold; color: #fff; line-height: 1;">{total_html}</div>
-                <div style="width:100%; background-color:#333; border-radius:10px; height:12px; margin: 15px 0;">
-                    <div style="width:{progreso_pct}%; background-color:{color_bar}; height:100%; border-radius:10px; transition: width 0.5s;"></div>
-                </div>
-                <div style="display:flex; justify-content:space-between; color:#888;">
-                    {balance_html}
-                    {hora_fin_html}
-                    {objetivo_html}
-                </div>
-            </div>
-        """, unsafe_html=True)
-
-        # --- MOSTRAR ANIMACIÓN DINÁMICA DE PARTÍCULAS POR RACHA ---
-        st.markdown(generar_particulas_racha(streak, COLOR_PRINCIPAL, usuario_estudiando or otro_estudiando), unsafe_html=True)
-        
-        # --- HEATMAP ---
-        max_val_hist = max(user_hist) if max(user_hist) > 0 else 1.0
-        
-        cells_html = ""
-        for val in user_hist:
-            if val <= 0: level = 0
-            else:
-                ratio = val / max_val_hist
-                if ratio <= 0.25: level = 1
-                elif ratio <= 0.50: level = 2
-                elif ratio <= 0.75: level = 3
-                else: level = 4
-            color_celda = PALETTE[level]
-            val_str = f"{int(val)} hs" if val == int(val) else f"{val:.1f} hs"
-            cells_html += f'<div class="heatmap-cell" style="background-color: {color_celda}; width: 25px; height: 25px; border-radius: 4px;" title="{val_str}"></div>'
-
-        st.markdown(f"""
-            <div style="
-                background-color: #1e1e1e;
-                padding: 15px;
-                border-radius: 10px;
-                display: flex;
-                flex-direction: column;
-                align-items: center;
-                gap: 8px;
-            ">
-                <div style="
-                    display: grid;
-                    grid-template-columns: repeat(10, 25px);
-                    grid-template-rows: repeat(3, 25px);
-                    gap: 5px;
-                    justify-content: center;
-                    font-family: sans-serif;
-                ">
-                    {cells_html}
-                </div>
-            </div>
-        """, unsafe_html=True)
-
-        st.markdown("<div style='height:1rem;'></div>", unsafe_html=True)
-        
-        # --- RENDERIZADO DE LA TARJETA DEL OTRO USUARIO + COMPARADOR ---
-        if otro_estudiando:
-            st.markdown(f"""
-                <div style="
-                    background-color: #1e1e1e;
-                    padding: 10px 15px;
-                    border-radius: 10px;
-                    border-left: 4px solid {COLOR_PRINCIPAL};
-                    font-size: 1rem;
-                    color: #fff;
-                    display: flex;
-                    align-items: center;
-                    justify-content: space-between;
-                ">
-                    <span>
-                        <strong>{OTRO_USUARIO}:</strong> {materia_otro} hace <span style="color: {COLOR_PRINCIPAL}; font-family: 'Courier New', monospace; font-weight: bold;">{tiempo_otro_hms}</span>
-                    </span>
-                    <span>{emoji_principal}</span>
-                </div>
-            """, unsafe_html=True)
-            st.markdown("<div style='height:1rem;'></div>", unsafe_allow_html=True)
-
-        if usuario_estudiando:
-            if st.button("🔄 Actualizar", use_container_width=True):
-                cargar_datos_unificados.clear()
-                st.rerun()
-        
-        # --- SECCIÓN AESTHETIC ---
-        md_content = st.secrets["facundo_md"] if USUARIO_ACTUAL == "Facundo" else st.secrets["ivan_md"]
-        formatted_content = markdown.markdown(md_content)
-        
-        st.markdown(f"""
-        <div style="
-            font-style: italic;
-            font-size: 0.85rem;
-            color: #858585;
-            border-left: 2px solid #444;
-            padding-left: 12px;
-            line-height: 1.5;
-        ">
-            {formatted_content}
-        </div>
-        """, unsafe_html=True)
-    
-    # --- Actualizar Placeholders de Materias y Botones ---
-    mis_materias = USERS_LOCAL[USUARIO_ACTUAL]
-    for materia, info in mis_materias.items():
-
-        base_seg = hms_a_segundos(datos[USUARIO_ACTUAL]["tiempos"][materia])
-        tiempo_total_seg = base_seg
-        en_curso = materia_en_curso == materia
-
-        if en_curso:
-            tiempo_total_seg += max(0, tiempo_anadido_seg)
-
-        tiempo_total_hms = segundos_a_hms(tiempo_total_seg)
-        
-        if mostrar_dinero_detallado:
-            dinero_materia = (tiempo_total_seg / 60) * m_rate
-            tiempo_display = f"{tiempo_total_hms} | ${dinero_materia:.2f}"
-        else:
-            tiempo_display = tiempo_total_hms
-
-        badge_html = f'<div class="status-badge status-active">{emoji_principal} Estudiando...</div>' if en_curso else ''
-        html_card = f"""<div class="materia-card"><div class="materia-title">{materia}</div>{badge_html}<div class="materia-time">{tiempo_display}</div></div>"""
-
-        with st.container():
-            st.markdown(html_card, unsafe_html=True)
-
-            key_start = sanitize_key(f"start_{USUARIO_ACTUAL}_{materia}")
-            key_stop = sanitize_key(f"stop_{USUARIO_ACTUAL}_{materia}")
-            key_disabled = sanitize_key(f"dis_{USUARIO_ACTUAL}_{materia}")
-
-            cols = st.columns([1,1,1])
-            with cols[0]:
-                if en_curso:
-                    st.button(f"⛔ DETENER {materia[:14]}", key=key_stop, use_container_width=True,
-                              on_click=stop_materia_callback, args=(USUARIO_ACTUAL, materia))
+            password_input = st.text_input("Contraseña:", type="password")
+            if st.button("Entrar"):
+                if password_input == st.secrets["password"]:
+                    st.session_state.authenticated = True
+                    st.rerun()
                 else:
-                    if materia_en_curso is None:
-                        st.button("▶ INICIAR", key=key_start, use_container_width=True,
-                                  on_click=start_materia_callback, args=(USUARIO_ACTUAL, materia))
-                    else:
-                        st.button("...", disabled=True, key=key_disabled, use_container_width=True)
+                    st.error("Contraseña incorrecta.")
+            st.stop()
+    app_habitos.run()
 
-            with cols[1]:
-                with st.expander("🛠️ Corregir tiempo manualmente"):
-                    input_key = f"input_{sanitize_key(materia)}"
-                    new_val = st.text_input("Tiempo (HH:MM:SS)", value=datos[USUARIO_ACTUAL]["tiempos"][materia], key=input_key)
+elif st.session_state.current_page == "biblioteca":
+    if not is_admin:
+        if st.session_state.usuario_seleccionado != "Facundo":
+            st.error("Solo Facundo tiene permisos para acceder a esta sección.")
+            st.stop()
+        else:
+            password_input = st.text_input("Contraseña:", type="password")
+            if st.button("Entrar"):
+                if password_input == st.secrets["password"]:
+                    st.session_state.authenticated = True
+                    st.rerun()
+                else:
+                    st.error("Contraseña incorrecta.")
+            st.stop()
+    app_biblioteca.main()
 
-                    def save_correction_callback(materia_key):
-                        if st.session_state.get("materia_activa") is not None:
-                            st.error("⛔ No podés corregir el tiempo mientras estás estudiando.")
-                            pedir_rerun()
-                            return
+elif st.session_state.current_page == "noticias":
+    if not is_admin:
+        if st.session_state.usuario_seleccionado != "Facundo":
+            st.error("Solo Facundo tiene permisos para acceder a esta sección.")
+            st.stop()
+        else:
+            password_input = st.text_input("Contraseña:", type="password")
+            if st.button("Entrar"):
+                if password_input == st.secrets["password"]:
+                    st.session_state.authenticated = True
+                    st.rerun()
+                else:
+                    st.error("Contraseña incorrecta.")
+            st.stop()
+    app_noticias.main()
 
-                        val = st.session_state.get(f"input_{sanitize_key(materia_key)}", "").strip()
-                        if ":" not in val:
-                            st.error("Formato inválido (HH:MM:SS)")
-                            pedir_rerun()
-                            return
-
-                        try:
-                            segs = hms_a_segundos(val)
-                            hhmmss = segundos_a_hms(segs)
-                            cfg_corr = get_day_config()
-                            time_cell_for_row = cfg_corr["USERS"][USUARIO_ACTUAL][materia_key]["time"]
-                            batch_write([(time_cell_for_row, hhmmss)])
-                            st.success("Tiempo corregido correctamente.")
-                        except Exception as e:
-                            st.error(f"Error al corregir el tiempo: {e}")
-                        finally:
-                            pedir_rerun()
-
-                    if en_curso or usuario_estudiando:
-                        st.info("⛔ No podés corregir el tiempo mientras estás estudiando.")
-                    else:
-                        if st.button("Guardar Corrección", key=f"save_{sanitize_key(materia)}", on_click=save_correction_callback, args=(materia,)):
-                            pass
-
-if __name__ == "__main__":
-    try:
-        main()
-    except Exception as e:
-        st.error(f"Error crítico en main(): {e}")
-        st.sidebar.error(f"Error crítico: {e}")
-        if st.sidebar.button("Reiniciar sesión (limpiar estado)"):
-            st.session_state.clear()
-            st.rerun()
+else:
+    app_estudio.main()
