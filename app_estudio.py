@@ -261,10 +261,10 @@ def sheets_batch_update(spreadsheet_id, updates):
 
 # ------------------ CONSTANTES ESTRUCTURALES (FIJAS) ------------------
 FILA_BASE = 5
-FILA_BASE2 = 10
+FILA_BASE2 = 15
 FECHA_BASE = date(2026, 1, 1)
-SHEET_FACUNDO = "F. Economía"
-SHEET_IVAN = "I. Física"
+SHEET_FACUNDO = "F. Materias"
+SHEET_IVAN = "I. Materias"
 SHEET_MARCAS = "marcas"
 
 RANGO_FECHA_MAIL = f"'{SHEET_MARCAS}'!Z1"
@@ -283,12 +283,12 @@ def get_day_config(target_date=None):
     
     users_dict = {
         "Facundo": {
-            "Trabajo":         {"time": f"'{SHEET_FACUNDO}'!B{time_row2}", "est": f"'{SHEET_MARCAS}'!Z10", "excluir": True},
-            "Cursado":         {"time": f"'{SHEET_FACUNDO}'!C{time_row2}", "est": f"'{SHEET_MARCAS}'!Z14", "excluir": True},
-            "Estadística I":    {"time": f"'{SHEET_FACUNDO}'!D{time_row2}", "est": f"'{SHEET_MARCAS}'!Z4"},
+            "Estadística I":         {"time": f"'{SHEET_FACUNDO}'!B{time_row2}", "est": f"'{SHEET_MARCAS}'!Z10"},
+            "Estadística II":         {"time": f"'{SHEET_FACUNDO}'!C{time_row2}", "est": f"'{SHEET_MARCAS}'!Z14"},
+            "Historia":    {"time": f"'{SHEET_FACUNDO}'!D{time_row2}", "est": f"'{SHEET_MARCAS}'!Z4"},
             "Int. Contabilidad":    {"time": f"'{SHEET_FACUNDO}'!E{time_row2}", "est": f"'{SHEET_MARCAS}'!Z5"},
-            "Sociología": {"time": f"'{SHEET_FACUNDO}'!F{time_row2}", "est": f"'{SHEET_MARCAS}'!Z6"},
-            "Derecho Público":        {"time": f"'{SHEET_FACUNDO}'!G{time_row2}", "est": f"'{SHEET_MARCAS}'!Z7"},
+            "Derecho Público": {"time": f"'{SHEET_FACUNDO}'!F{time_row2}", "est": f"'{SHEET_MARCAS}'!Z6"},
+            "Trabajo":        {"time": f"'{SHEET_FACUNDO}'!G{time_row2}", "est": f"'{SHEET_MARCAS}'!Z7", "excluir": True},
         },
         "Iván": {
             "Física":   {"time": f"'{SHEET_IVAN}'!B{time_row}", "est": f"'{SHEET_MARCAS}'!Z8"},
