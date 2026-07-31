@@ -277,7 +277,7 @@ def get_day_config(target_date=None):
             "Historia":          {"time": f"'{SHEET_FACUNDO}'!D{time_row2}", "est": f"'{SHEET_MARCAS}'!Z4"},
             "Int. Contabilidad": {"time": f"'{SHEET_FACUNDO}'!E{time_row2}", "est": f"'{SHEET_MARCAS}'!Z5"},
             "Derecho Público":   {"time": f"'{SHEET_FACUNDO}'!F{time_row2}", "est": f"'{SHEET_MARCAS}'!Z6"},
-            "Trabajo":           {"time": f"'{SHEET_FACUNDO}'!H{time_row2}", "est": f"'{SHEET_MARCAS}'!Z7"},
+            "Trabajo":           {"time": f"'{SHEET_FACUNDO}'!H{time_row2}", "est": f"'{SHEET_MARCAS}'!Z7", "excluir": True},
         },
         "Iván": {
             "Física":   {"time": f"'{SHEET_IVAN}'!B{time_row}", "est": f"'{SHEET_MARCAS}'!Z8"},
@@ -554,14 +554,17 @@ def main():
     if usuario_estudiando and inicio_dt is not None:
         tiempo_anadido_seg = int((_argentina_now_global() - inicio_dt).total_seconds())
 
-    # --- SUMAR TODOS LOS TIEMPOS DE LAS MATERIAS ---
+    # --- SUMAR TODOS LOS TIEMPOS DE LAS MATERIAS (IGNORANDO LAS QUE TIENEN "excluir": True) ---
     total_segs = 0
-    for materia in USERS_LOCAL[USUARIO_ACTUAL]:
+    for materia, info in USERS_LOCAL[USUARIO_ACTUAL].items():
+        if info.get("excluir"):
+            continue  # Saltear materias excluidas del total superior
+        
         base_seg = hms_a_segundos(datos[USUARIO_ACTUAL]["tiempos"][materia])
+        if usuario_estudiando and materia == materia_en_curso:
+            base_seg += max(0, tiempo_anadido_seg)
+        
         total_segs += base_seg
-
-    if usuario_estudiando:
-        total_segs += max(0, tiempo_anadido_seg)
 
     total_min = total_segs / 60
     total_hms = segundos_a_hms(total_segs)
@@ -585,9 +588,10 @@ def main():
         st.balloons()
         st.session_state.show_celebration = False
 
-    # Hora de fin estimada
+    # Hora de fin estimada (solo si está estudiando una materia no excluida)
     hora_fin_html = "<div></div>"
-    if usuario_estudiando and total_min < m_obj:
+    materia_actual_excluida = USERS_LOCAL[USUARIO_ACTUAL].get(materia_en_curso, {}).get("excluir", False) if materia_en_curso else False
+    if usuario_estudiando and not materia_actual_excluida and total_min < m_obj:
         minutos_restantes = m_obj - total_min
         hora_fin_obj = _argentina_now_global() + timedelta(minutes=minutos_restantes)
         hora_fin_html = f'<div style="color:#aaa;">Terminás a las {hora_fin_obj.strftime("%H:%M")}</div>'
