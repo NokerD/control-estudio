@@ -288,7 +288,7 @@ def get_day_config(target_date=None):
             "Historia":    {"time": f"'{SHEET_FACUNDO}'!D{time_row2}", "est": f"'{SHEET_MARCAS}'!Z4"},
             "Int. Contabilidad":    {"time": f"'{SHEET_FACUNDO}'!E{time_row2}", "est": f"'{SHEET_MARCAS}'!Z5"},
             "Derecho Público": {"time": f"'{SHEET_FACUNDO}'!F{time_row2}", "est": f"'{SHEET_MARCAS}'!Z6"},
-            "Trabajo":        {"time": f"'{SHEET_FACUNDO}'!G{time_row2}", "est": f"'{SHEET_MARCAS}'!Z7", "excluir": True},
+            "Trabajo":        {"time": f"'{SHEET_FACUNDO}'!H{time_row2}", "est": f"'{SHEET_MARCAS}'!Z7", "excluir": True},
         },
         "Iván": {
             "Física":   {"time": f"'{SHEET_IVAN}'!B{time_row}", "est": f"'{SHEET_MARCAS}'!Z8"},
