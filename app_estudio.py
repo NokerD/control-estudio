@@ -77,14 +77,13 @@ def cargar_estilos(color_principal="#00e676", color_principal_rgba="rgba(0, 230,
 def generar_particulas(color):
     return """
     <style>
-    /* Contenedor fijo para que las partículas queden de fondo */
     .particles-container {
         position: fixed;
         top: 0;
         left: 0;
         width: 100vw;
         height: 100vh;
-        pointer-events: none; /* Para no interferir con los clics */
+        pointer-events: none;
         z-index: 0;
         overflow: hidden;
     }
@@ -103,7 +102,6 @@ def generar_particulas(color):
         0% { transform: translateY(0) scale(1); opacity: 1; }
         100% { transform: translateY(-100vh) scale(0.5); opacity: 0; }
     }
-    /* Partículas distribuidas y con delay para asimetría */
     .particle:nth-child(1) { left: 15%; animation-duration: 6s; animation-delay: 0s; }
     .particle:nth-child(2) { left: 35%; animation-duration: 5s; animation-delay: 2s; }
     .particle:nth-child(3) { left: 55%; animation-duration: 7s; animation-delay: 1s; }
@@ -171,7 +169,6 @@ def segundos_a_hms(seg):
     s = seg % 60
     return f"{h:02d}:{m:02d}:{s:02d}"
 
-def hms_a_minutos(hms): return hms_a_segundos(hms) / 60
 def parse_float_or_zero(s):
     if s is None: return 0.0
     try: return float(str(s).replace(",", ".").strip())
@@ -199,7 +196,6 @@ def replace_row_in_range(range_str, new_row):
 def sanitize_key(s):
     return re.sub(r'[^a-zA-Z0-9_]', '_', s)
 
-# ------------------ RERUN HELPER ------------------
 def pedir_rerun():
     st.session_state["_do_rerun"] = True
 
@@ -208,7 +204,7 @@ def pedir_rerun():
 def get_sheets_session():
     try:
         key_dict = json.loads(st.secrets["service_account"])
-    except Exception as e:
+    except Exception:
         st.error(f"Error leyendo st.secrets['service_account']")
         st.stop()
     try:
@@ -217,7 +213,7 @@ def get_sheets_session():
             scopes=["https://www.googleapis.com/auth/spreadsheets"]
         )
         return AuthorizedSession(creds)
-    except Exception as e:
+    except Exception:
         st.error(f"Error creando credenciales")
         st.stop()
 
@@ -236,15 +232,9 @@ def sheets_batch_get(spreadsheet_id, ranges):
         data = resp.json()
         ordered_results = data.get("valueRanges", [])
         result_map = {r: res for r, res in zip(unique_ranges, ordered_results)}
-        final_list = []
-        for r in ranges:
-            if r in result_map:
-                final_list.append(result_map[r])
-            else:
-                final_list.append({})
-        return {"valueRanges": final_list}
+        return {"valueRanges": [result_map.get(r, {}) for r in ranges]}
     except RequestException as e:
-        raise RuntimeError(f"Error HTTP en batchGet al leer la hoja: {e}")
+        raise RuntimeError(f"Error HTTP en batchGet: {e}")
 
 def sheets_batch_update(spreadsheet_id, updates):
     url = f"https://sheets.googleapis.com/v4/spreadsheets/{spreadsheet_id}/values:batchUpdate"
@@ -257,9 +247,9 @@ def sheets_batch_update(spreadsheet_id, updates):
         resp.raise_for_status()
         return resp.json()
     except RequestException as e:
-        raise RuntimeError(f"Error HTTP en batchUpdate al escribir en la hoja: {e}")
+        raise RuntimeError(f"Error HTTP en batchUpdate: {e}")
 
-# ------------------ CONSTANTES ESTRUCTURALES (FIJAS) ------------------
+# ------------------ CONSTANTES ESTRUCTURALES ------------------
 FILA_BASE = 5
 FILA_BASE2 = 15
 FECHA_BASE = date(2026, 1, 1)
@@ -267,10 +257,9 @@ SHEET_FACUNDO = "F. Materias"
 SHEET_IVAN = "I. Materias"
 SHEET_MARCAS = "marcas"
 
-RANGO_FECHA_MAIL = f"'{SHEET_MARCAS}'!Z1"
-RANGO_LOCK_IVAN = f"'{SHEET_MARCAS}'!Z2"
-RANGO_LOCK_FACUNDO = f"'{SHEET_MARCAS}'!Z3"
-RANGO_FECHA_MAIL_VAGO = f"'{SHEET_MARCAS}'!Z12" 
+# CELDAS UNICAS Y FIJAS PARA EL OBJETIVO DE CADA UNO (EN MINUTOS)
+RANGO_OBJ_IVAN = f"'{SHEET_MARCAS}'!O2"
+RANGO_OBJ_FACU = f"'{SHEET_MARCAS}'!P2"
 
 # ------------------ CONFIGURACIÓN DINÁMICA DEL DÍA ------------------
 def get_day_config(target_date=None):
@@ -283,89 +272,51 @@ def get_day_config(target_date=None):
     
     users_dict = {
         "Facundo": {
-            "Estadística I":         {"time": f"'{SHEET_FACUNDO}'!B{time_row2}", "est": f"'{SHEET_MARCAS}'!Z10"},
-            "Estadística II":         {"time": f"'{SHEET_FACUNDO}'!C{time_row2}", "est": f"'{SHEET_MARCAS}'!Z14"},
-            "Historia":    {"time": f"'{SHEET_FACUNDO}'!D{time_row2}", "est": f"'{SHEET_MARCAS}'!Z4"},
-            "Int. Contabilidad":    {"time": f"'{SHEET_FACUNDO}'!E{time_row2}", "est": f"'{SHEET_MARCAS}'!Z5"},
-            "Derecho Público": {"time": f"'{SHEET_FACUNDO}'!F{time_row2}", "est": f"'{SHEET_MARCAS}'!Z6"},
-            "Trabajo":        {"time": f"'{SHEET_FACUNDO}'!H{time_row2}", "est": f"'{SHEET_MARCAS}'!Z7", "excluir": True},
+            "Estadística I":     {"time": f"'{SHEET_FACUNDO}'!B{time_row2}", "est": f"'{SHEET_MARCAS}'!Z10"},
+            "Estadística II":    {"time": f"'{SHEET_FACUNDO}'!C{time_row2}", "est": f"'{SHEET_MARCAS}'!Z14"},
+            "Historia":          {"time": f"'{SHEET_FACUNDO}'!D{time_row2}", "est": f"'{SHEET_MARCAS}'!Z4"},
+            "Int. Contabilidad": {"time": f"'{SHEET_FACUNDO}'!E{time_row2}", "est": f"'{SHEET_MARCAS}'!Z5"},
+            "Derecho Público":   {"time": f"'{SHEET_FACUNDO}'!F{time_row2}", "est": f"'{SHEET_MARCAS}'!Z6"},
+            "Trabajo":           {"time": f"'{SHEET_FACUNDO}'!H{time_row2}", "est": f"'{SHEET_MARCAS}'!Z7"},
         },
         "Iván": {
             "Física":   {"time": f"'{SHEET_IVAN}'!B{time_row}", "est": f"'{SHEET_MARCAS}'!Z8"},
             "Análisis": {"time": f"'{SHEET_IVAN}'!C{time_row}", "est": f"'{SHEET_MARCAS}'!Z9"},
-            "Álgebra": {"time": f"'{SHEET_IVAN}'!D{time_row}", "est": f"'{SHEET_MARCAS}'!Z13"},
+            "Álgebra":  {"time": f"'{SHEET_IVAN}'!D{time_row}", "est": f"'{SHEET_MARCAS}'!Z13"},
         }
     }
     
     return {
         "TIME_ROW": time_row,
         "USERS": users_dict,
-        "WEEK_RANGE": f"'{SHEET_MARCAS}'!R{time_row-2}",
-        "RANGO_RATE_FACU": f"'{SHEET_MARCAS}'!C{time_row-2}",
-        "RANGO_RATE_IVAN": f"'{SHEET_MARCAS}'!B{time_row-2}",
-        "RANGO_OBJ_FACU": f"'{SHEET_MARCAS}'!P{time_row-2}",
-        "RANGO_OBJ_IVAN": f"'{SHEET_MARCAS}'!O{time_row-2}",
-        "RANGO_CHECK_IVAN": f"'{SHEET_MARCAS}'!H{time_row-2}",
-        "RANGO_CHECK_FACU": f"'{SHEET_MARCAS}'!I{time_row-2}",
-        "RANGO_POZO_IVAN": f"'{SHEET_MARCAS}'!W{time_row-2}",
-        "RANGO_POZO_FACU": f"'{SHEET_MARCAS}'!X{time_row-2}",
     }
 
-# ------------------ CARGA UNIFICADA (cacheada por fecha) ------------------
+# ------------------ CARGA UNIFICADA DE DATOS ------------------
 @st.cache_data()
 def cargar_datos_unificados(fecha_str):
     cfg = get_day_config()
     USERS_LOCAL = cfg["USERS"]
     
-    yesterday = _argentina_now_global().date() - timedelta(days=1)
-    cfg_yesterday = get_day_config(yesterday)
-    
     all_ranges = []
-    mapa_indices = {
-        "materias": {}, 
-        "rates": {}, 
-        "objs": {}, 
-        "checks": {}, 
-        "week": None, 
-        "week_ayer": None, 
-        "mail_date": None, 
-        "mail_vago": None,
-        "hist_facu": None,
-        "hist_ivan": None
-    }
+    mapa_indices = {"materias": {}, "objs": {}, "hist_facu": None, "hist_ivan": None}
     idx = 0
     
     for user, materias in USERS_LOCAL.items():
         for m, info in materias.items():
             all_ranges.append(info["est"]); mapa_indices["materias"][(user, m, "est")] = idx; idx += 1
             all_ranges.append(info["time"]); mapa_indices["materias"][(user, m, "time")] = idx; idx += 1
-    
-    all_ranges.append(cfg["RANGO_RATE_FACU"]); mapa_indices["rates"]["Facundo"] = idx; idx += 1
-    all_ranges.append(cfg["RANGO_RATE_IVAN"]); mapa_indices["rates"]["Iván"] = idx; idx += 1
-    all_ranges.append(cfg["RANGO_OBJ_FACU"]); mapa_indices["objs"]["Facundo"] = idx; idx += 1
-    all_ranges.append(cfg["RANGO_OBJ_IVAN"]); mapa_indices["objs"]["Iván"] = idx; idx += 1
-    all_ranges.append(cfg["WEEK_RANGE"]); mapa_indices["week"] = idx; idx += 1
-    all_ranges.append(cfg_yesterday["WEEK_RANGE"]); mapa_indices["week_ayer"] = idx; idx += 1
-    
-    all_ranges.append(RANGO_FECHA_MAIL); mapa_indices["mail_date"] = idx; idx += 1
-    all_ranges.append(RANGO_FECHA_MAIL_VAGO); mapa_indices["mail_vago"] = idx; idx += 1
-    
-    all_ranges.append(cfg["RANGO_CHECK_IVAN"]); mapa_indices["checks"]["Iván"] = idx; idx += 1
-    all_ranges.append(cfg["RANGO_CHECK_FACU"]); mapa_indices["checks"]["Facundo"] = idx; idx += 1
 
-    all_ranges.append(cfg["RANGO_POZO_IVAN"]); mapa_indices["pozo_ivan"] = idx; idx += 1
-    all_ranges.append(cfg["RANGO_POZO_FACU"]); mapa_indices["pozo_facu"] = idx; idx += 1
+    all_ranges.append(RANGO_OBJ_FACU); mapa_indices["objs"]["Facundo"] = idx; idx += 1
+    all_ranges.append(RANGO_OBJ_IVAN); mapa_indices["objs"]["Iván"] = idx; idx += 1
 
-    # --- HISTORIAL ÚLTIMOS 30 DÍAS ---
+    # HISTORIAL DE LOS ÚLTIMOS 30 DÍAS
     target_date = datetime.strptime(fecha_str, "%Y-%m-%d").date()
     delta_today = (target_date - FECHA_BASE).days
 
-    # Facundo: Columna H de F. Economía
     row_end_facu = FILA_BASE2 + delta_today
     row_start_facu = max(FILA_BASE2, row_end_facu - 29)
     range_hist_facu = f"'{SHEET_FACUNDO}'!H{row_start_facu}:H{row_end_facu}"
 
-    # Iván: Columna G de I. Física
     row_end_ivan = FILA_BASE + delta_today
     row_start_ivan = max(FILA_BASE, row_end_ivan - 29)
     range_hist_ivan = f"'{SHEET_IVAN}'!G{row_start_ivan}:G{row_end_ivan}"
@@ -396,12 +347,11 @@ def cargar_datos_unificados(fecha_str):
             val = r[0] if r else "0"
             float_list.append(parse_float_or_zero(val))
         
-        # Rellena con 0.0 al inicio si hay menos de 30 datos
         while len(float_list) < default_len:
             float_list.insert(0, 0.0)
         return float_list[:default_len]
 
-    data_usuarios = {u: {"estado": {}, "tiempos": {}, "inicio_dt": None, "materia_activa": None} for u in USERS_LOCAL}
+    data_usuarios = {u: {"estado": {}, "tiempos": {}} for u in USERS_LOCAL}
     materia_en_curso = None
     inicio_dt = None
 
@@ -423,26 +373,10 @@ def cargar_datos_unificados(fecha_str):
                 except Exception:
                     pass
 
-    resumen = {
-        "Facundo": {"per_min": parse_float_or_zero(get_val(mapa_indices["rates"]["Facundo"])), "obj": parse_float_or_zero(get_val(mapa_indices["objs"]["Facundo"]))},
-        "Iván": {"per_min": parse_float_or_zero(get_val(mapa_indices["rates"]["Iván"])), "obj": parse_float_or_zero(get_val(mapa_indices["objs"]["Iván"]))}
+    objs = {
+        "Facundo": parse_float_or_zero(get_val(mapa_indices["objs"]["Facundo"])),
+        "Iván": parse_float_or_zero(get_val(mapa_indices["objs"]["Iván"]))
     }
-    raw_week = get_val(mapa_indices["week"], "0")
-    balance_val = parse_float_or_zero(raw_week)
-    
-    raw_week_ayer = get_val(mapa_indices["week_ayer"], "0")
-    balance_val_ayer = parse_float_or_zero(raw_week_ayer)
-    
-    last_mail_date = get_val(mapa_indices["mail_date"], "")
-    last_mail_vago = get_val(mapa_indices["mail_vago"], "")
-
-    checks_data = {
-        "Iván": get_val(mapa_indices["checks"]["Iván"], ""),
-        "Facundo": get_val(mapa_indices["checks"]["Facundo"], "")
-    }
-
-    pozo_ivan_val = parse_float_or_zero(get_val(mapa_indices["pozo_ivan"]))
-    pozo_facu_val = parse_float_or_zero(get_val(mapa_indices["pozo_facu"]))
 
     hist_facu_vals = get_list_val(mapa_indices["hist_facu"])
     hist_ivan_vals = get_list_val(mapa_indices["hist_ivan"])
@@ -452,15 +386,8 @@ def cargar_datos_unificados(fecha_str):
         st.session_state["inicio_dt"] = inicio_dt
 
     return {
-        "users_data": data_usuarios, 
-        "resumen": resumen, 
-        "balance": balance_val,
-        "balance_ayer": balance_val_ayer,
-        "last_mail_date": last_mail_date,
-        "last_mail_vago": last_mail_vago,
-        "checks": checks_data,
-        "pozo_ivan": pozo_ivan_val,
-        "pozo_facu": pozo_facu_val,
+        "users_data": data_usuarios,
+        "objs": objs,
         "hist_facu": hist_facu_vals,
         "hist_ivan": hist_ivan_vals
     }
@@ -472,39 +399,8 @@ def batch_write(updates):
     except Exception as e:
         st.error(f"Error escribiendo Google Sheets: {e}")
         st.stop()
-        
-# ------------------ FUNCIONES DE LOCKEO DE SESIÓN ------------------
-def get_lock_range(user):
-    if user == "Facundo":
-        return RANGO_LOCK_FACUNDO
-    elif user == "Iván":
-        return RANGO_LOCK_IVAN
-    return None
 
-@st.cache_data(ttl=2)
-def get_user_lock_status(user):
-    range_str = get_lock_range(user)
-    if not range_str: return ""
-    try:
-        res = sheets_batch_get(st.secrets["sheet_id"], [range_str])
-        vr = res.get("valueRanges", [{}])[0]
-        return str(vr.get("values", [[""]])[0][0] if vr.get("values") else "").strip()
-    except Exception as e:
-        st.error(f"Error leyendo estado de lock para {user}: {e}")
-        return "ERROR_READING_LOCK"
-
-def set_user_lock_status(user, lock_value):
-    range_str = get_lock_range(user)
-    if not range_str: return False
-    try:
-        sheets_batch_update(st.secrets["sheet_id"], [(range_str, lock_value)])
-        get_user_lock_status.clear()
-        return True
-    except Exception as e:
-        st.error(f"Error escribiendo estado de lock para {user}: {e}")
-        return False
-
-# ------------------ CALLBACKS ACTUALIZADOS ------------------
+# ------------------ CALLBACKS ------------------
 def start_materia_callback(usuario, materia):
     try:
         cfg = get_day_config()
@@ -530,26 +426,24 @@ def stop_materia_callback(usuario, materia):
         info = cfg["USERS"][usuario][materia]
         
         inicio = st.session_state.get("inicio_dt")
-        prev_est = ""
         if inicio is None or st.session_state.get("materia_activa") != materia:
-            st.warning("Marca de inicio no encontrada en session_state, releyendo de la hoja...")
             try:
                 res = sheets_batch_get(st.secrets["sheet_id"], [info["est"]])
                 vr = res.get("valueRanges", [{}])[0]
                 prev_est = vr.get("values", [[""]])[0][0] if vr.get("values") else ""
                 if not prev_est:
-                      st.error("No hay marca de inicio registrada (no se puede detener).")
-                      pedir_rerun()
-                      return
+                    st.error("No hay marca de inicio registrada.")
+                    pedir_rerun()
+                    return
                 inicio = parse_datetime(prev_est)
             except Exception as e:
-                 st.error(f"Error leyendo marca de inicio de la hoja: {e}")
-                 pedir_rerun()
-                 return
+                st.error(f"Error leyendo marca de inicio: {e}")
+                pedir_rerun()
+                return
 
         fin = _argentina_now_global()
         if fin <= inicio:
-            st.error("Tiempo inválido. La hora de fin es anterior a la de inicio.")
+            st.error("Hora fin previa a hora inicio.")
             batch_write([(info["est"], "")])
             pedir_rerun()
             return
@@ -565,7 +459,6 @@ def stop_materia_callback(usuario, materia):
         updates = []
         for (p_inicio, p_fin) in partes:
             segs = int((p_fin - p_inicio).total_seconds())
-            
             base_correcta = FILA_BASE2 if usuario == "Facundo" else FILA_BASE
             target_row = base_correcta + (p_inicio.date() - FECHA_BASE).days
             
@@ -600,26 +493,15 @@ def main():
         st.rerun()
         
     if "usuario_seleccionado" not in st.session_state or st.session_state["usuario_seleccionado"] not in ["Facundo", "Iván"]:
-        st.error("Error: Usuario no seleccionado en la sesión. Reinicia la aplicación.")
+        st.error("Error: Usuario no seleccionado.")
         st.stop()
         
-    # --- Carga de datos ---
     hoy_str = _argentina_now_global().strftime("%Y-%m-%d")
     datos_globales = cargar_datos_unificados(hoy_str)
     
     cfg = get_day_config()
     USERS_LOCAL = cfg["USERS"]
-    
     datos = datos_globales["users_data"]
-    resumen_marcas = datos_globales["resumen"]
-    balance_val_raw = datos_globales["balance"]
-    balance_val_ayer_raw = datos_globales["balance_ayer"]
-    last_mail_date_str = datos_globales["last_mail_date"]
-    last_mail_vago_str = datos_globales["last_mail_vago"]
-    checks_data = datos_globales["checks"]
-
-    pozo_ivan = datos_globales["pozo_ivan"]
-    pozo_facu = datos_globales["pozo_facu"]
 
     USUARIO_ACTUAL = st.session_state["usuario_seleccionado"]
     OTRO_USUARIO = "Iván" if USUARIO_ACTUAL == "Facundo" else "Facundo"
@@ -641,40 +523,25 @@ def main():
                 break
 
     usuario_estudiando = materia_en_curso is not None
-
     materia_otro = next((m for m, v in datos[OTRO_USUARIO]["estado"].items() if str(v).strip() != ""), "")
     otro_estudiando = materia_otro != ""
 
-    # --- CONFIGURACIÓN DE COLOR SEGÚN EL OTRO Y UNO MISMO ---
+    # --- PALETAS Y COLORES ---
     if usuario_estudiando and otro_estudiando:
-        COLOR_PRINCIPAL = "#00b0ff"  # Azul brillante
+        COLOR_PRINCIPAL = "#00b0ff"
         COLOR_RGBA = "rgba(0, 176, 255, 0.2)"
         emoji_principal = "🔵"
-        # Paleta de Azul GitHub
-        PALETTE = {
-            0: "#161b22",  # Vacío
-            1: "#0a3054",  # Bajo
-            2: "#004d80",  # Medio-Bajo
-            3: "#007acc",  # Medio-Alto
-            4: "#00b0ff"   # Alto (Azul dinámico activo)
-        }
+        PALETTE = {0: "#161b22", 1: "#0a3054", 2: "#004d80", 3: "#007acc", 4: "#00b0ff"}
     else:
-        COLOR_PRINCIPAL = "#00e676"  # Verde brillante
+        COLOR_PRINCIPAL = "#00e676"
         COLOR_RGBA = "rgba(0, 230, 118, 0.2)"
         emoji_principal = "🟢"
-        # Paleta de Verde GitHub
-        PALETTE = {
-            0: "#161b22",  # Vacío
-            1: "#0e4429",  # Bajo
-            2: "#006d32",  # Medio-Bajo
-            3: "#26a641",  # Medio-Alto
-            4: "#00e676"   # Alto (Verde dinámico activo)
-        }
+        PALETTE = {0: "#161b22", 1: "#0e4429", 2: "#006d32", 3: "#26a641", 4: "#00e676"}
+    
     cargar_estilos(COLOR_PRINCIPAL, COLOR_RGBA)
 
-    # --- CÁLCULO DE TIEMPO DEL OTRO USUARIO ---
+    # --- CÁLCULOS DEL OTRO USUARIO ---
     tiempo_otro_hms = ""
-    tiempo_otro_seg = 0
     if otro_estudiando:
         try:
             inicio_otro = parse_datetime(datos[OTRO_USUARIO]["estado"][materia_otro])
@@ -683,182 +550,57 @@ def main():
         except:
             otro_estudiando = False
 
-    def circle(color):
-        return (f'<span style="display:inline-flex; align-items:center; justify-content:center; '
-                f'width:10px; height:10px; border-radius:50%; background:{color}; '
-                f'margin-right:6px; flex-shrink:0;"></span>')
-
-    circle_usuario = circle(COLOR_PRINCIPAL if usuario_estudiando else "#ffffff")
-    circle_otro = circle(COLOR_PRINCIPAL if otro_estudiando else "#ffffff")
-
     tiempo_anadido_seg = 0
     if usuario_estudiando and inicio_dt is not None:
         tiempo_anadido_seg = int((_argentina_now_global() - inicio_dt).total_seconds())
 
-    def calcular_metricas(usuario, tiempo_activo_seg_local=0):
-        per_min = resumen_marcas[usuario]["per_min"]
-        objetivo = resumen_marcas[usuario]["obj"]
-        
-        try:
-            min_study = float(st.secrets.get("min_study", 0))
-        except (ValueError, TypeError):
-            min_study = 0.0
+    # --- SUMAR TODOS LOS TIEMPOS DE LAS MATERIAS ---
+    total_segs = 0
+    for materia in USERS_LOCAL[USUARIO_ACTUAL]:
+        base_seg = hms_a_segundos(datos[USUARIO_ACTUAL]["tiempos"][materia])
+        total_segs += base_seg
 
-        total_min_regular = 0.0
-        total_min_excluido = 0.0
+    if usuario_estudiando:
+        total_segs += max(0, tiempo_anadido_seg)
 
-        for materia, info in USERS_LOCAL[usuario].items():
-            base_seg = hms_a_segundos(datos[usuario]["tiempos"][materia])
-            segs_materia = base_seg
-            
-            if usuario_estudiando and usuario == USUARIO_ACTUAL and materia == materia_en_curso:
-                segs_materia += tiempo_activo_seg_local
-            
-            mins_materia = segs_materia / 60
+    total_min = total_segs / 60
+    total_hms = segundos_a_hms(total_segs)
 
-            if info.get("excluir"):
-                total_min_excluido += mins_materia
-            else:
-                total_min_regular += mins_materia
+    # --- OBJETIVO UNICO (CELDA FIJA EN MINUTOS) ---
+    m_obj = datos_globales["objs"][USUARIO_ACTUAL]
+    objetivo_hms = segundos_a_hms(int(m_obj * 60))
+    progreso_pct = min(total_min / max(1.0, m_obj), 1.0) * 100
 
-        if total_min_regular >= min_study:
-            total_min = total_min_regular + total_min_excluido
-        else:
-            total_min = total_min_regular
-
-        progreso_en_dinero = (tiempo_activo_seg_local / 60) * per_min
-        m_tot = total_min * per_min
-        
-        return m_tot, per_min, objetivo, total_min, progreso_en_dinero
-
-    m_tot, m_rate, m_obj, total_min, progreso_en_dinero = calcular_metricas(USUARIO_ACTUAL, tiempo_anadido_seg)
-    pago_objetivo = m_rate * m_obj
-    progreso_pct = min(m_tot / max(1, pago_objetivo), 1.0) * 100
     if progreso_pct >= 100:
         COLOR_PRINCIPAL = "#ff9800"
         COLOR_RGBA = "rgba(255, 152, 0, 0.2)"
         emoji_principal = "🟠"
-    
-        PALETTE = {
-            0: "#161b22",
-            1: "#5a3200",
-            2: "#8a4f00",
-            3: "#c77700",
-            4: "#ff9800"
-        }
+        PALETTE = {0: "#161b22", 1: "#5a3200", 2: "#8a4f00", 3: "#c77700", 4: "#ff9800"}
         cargar_estilos(COLOR_PRINCIPAL, COLOR_RGBA)
-    
-    # ------------------ MICRO-CELEBRACIÓN ------------------
-    if progreso_pct >= 100 and "password_triggered" not in st.session_state:
-        st.session_state.goal_completed = True
-        st.session_state.password_triggered = True
-        st.session_state.show_celebration = True
+        
+        if "show_celebration" not in st.session_state:
+            st.session_state.show_celebration = True
 
     if st.session_state.get("show_celebration", False):
         st.balloons()
         st.session_state.show_celebration = False
-    # ---------------------------------------------------------
 
-    # Barra de progreso utiliza el color principal de la interfaz
-    color_bar = COLOR_PRINCIPAL
-
-    objetivo_hms = segundos_a_hms(int(m_obj * 60))
-    total_hms = segundos_a_hms(int(total_min * 60))
-
-    pozo_valor = pozo_facu if USUARIO_ACTUAL == "Facundo" else pozo_ivan
-    pozo_valor -= m_tot
-    if pozo_valor < 0:
-        m_tot += pozo_valor
-        pozo_valor = 0.0
-    pozo_color = "#ff1744" if round(pozo_valor) != 0 else "#aaa"
-
-    m_tot, m_rate, m_obj, total_min, progreso_en_dinero = calcular_metricas(USUARIO_ACTUAL, tiempo_anadido_seg)
-    
-    paga_por_hora = m_rate * 60
-    if paga_por_hora > 0:
-        pozo_horas_decimal = pozo_valor / paga_por_hora
-    else:
-        pozo_horas_decimal = 0.0
-
-    pago_objetivo = m_rate * m_obj
-
-    balance_val = balance_val_ayer_raw
-    if USUARIO_ACTUAL == "Facundo":
-        balance_val = -balance_val
-    if USUARIO_ACTUAL == "Facundo":
-        balance_val += m_tot
-    balance_color = COLOR_PRINCIPAL if balance_val > 0 else "#ff1744" if balance_val < 0 else "#aaa"
-    if USUARIO_ACTUAL == "Facundo":
-        balance_str = f"${balance_val:.2f}" if balance_val > 0 else (f"-${abs(balance_val):.2f}" if balance_val < 0 else "$0.00")
-    else:
-        balance_str = f"${balance_val-15000:.2f}" if balance_val-15000 > 0 else (f"-${abs(balance_val-15000):.2f}" if balance_val-15000 < 0 else "$0.00")
-
-    mostrar_dinero_detallado = (USUARIO_ACTUAL == "Facundo")
-
+    # Hora de fin estimada
     hora_fin_html = "<div></div>"
-    
-    if usuario_estudiando:
-        try:
-            min_study = float(st.secrets.get("min_study", 0))
-        except (ValueError, TypeError):
-            min_study = 0.0
-    
-        total_min_regular = 0.0
-        total_min_excluido = 0.0
-    
-        for materia, info in USERS_LOCAL[USUARIO_ACTUAL].items():
-            segs = hms_a_segundos(datos[USUARIO_ACTUAL]["tiempos"][materia])
-    
-            if materia == materia_en_curso:
-                segs += tiempo_anadido_seg
-    
-            minutos = segs / 60
-    
-            if info.get("excluir"):
-                total_min_excluido += minutos
-            else:
-                total_min_regular += minutos
-    
-        if total_min_regular >= min_study:
-            minutos_restantes = m_obj - (total_min_regular + total_min_excluido)
-        else:
-            faltan_para_minimo = min_study - total_min_regular
-            total_proyectado = min_study + total_min_excluido
-    
-            if total_proyectado >= m_obj:
-                minutos_restantes = faltan_para_minimo
-            else:
-                minutos_restantes = faltan_para_minimo + (m_obj - total_proyectado)
-    
-        if minutos_restantes > 0:
-            hora_fin_obj = _argentina_now_global() + timedelta(minutes=minutos_restantes)
-            hora_fin_html = f'<div style="color:#aaa;">Terminás a las {hora_fin_obj.strftime("%H:%M")}</div>'
+    if usuario_estudiando and total_min < m_obj:
+        minutos_restantes = m_obj - total_min
+        hora_fin_obj = _argentina_now_global() + timedelta(minutes=minutos_restantes)
+        hora_fin_html = f'<div style="color:#aaa;">Terminás a las {hora_fin_obj.strftime("%H:%M")}</div>'
 
-    if mostrar_dinero_detallado:
-        pozo_html = f'<strong>{pozo_horas_decimal:.2f}hs</strong> <span style="color:#666; margin-left:4px;">(${pozo_valor:.2f})</span>'
-        total_html = f'{total_hms} | ${m_tot:.2f}'
-        balance_html = f'<div>Balance: <span style="color:{balance_color};">{balance_str}</span></div>'
-        objetivo_html = f'<div>{objetivo_hms} | ${pago_objetivo:.2f}</div>'
-    else:
-        pozo_html = f'<strong>{pozo_horas_decimal:.2f}hs</strong>'
-        total_html = f'{total_hms}'
-        balance_html = hora_fin_html
-        hora_fin_html = f'<div></div>'
-        objetivo_html = f'<div>{objetivo_hms}</div>'
-
-    # --- CÁLCULO DE RACHA (STREAK) Y GITHUB COMMIT HEATMAP ---
+    # --- CÁLCULO DE RACHA (STREAK) ---
     user_hist = datos_globales["hist_facu"] if USUARIO_ACTUAL == "Facundo" else datos_globales["hist_ivan"]
-    
-    # Invertimos para contar desde el día más reciente (el último dato)
     reversed_hist = user_hist[::-1]
     streak = 0
     if reversed_hist[0] > 0:
-        # Empezó a estudiar hoy
         for val in reversed_hist:
             if val > 0: streak += 1
             else: break
     elif len(reversed_hist) > 1 and reversed_hist[1] > 0:
-        # Hoy todavía 0, pero la racha sigue viva desde ayer
         for val in reversed_hist[1:]:
             if val > 0: streak += 1
             else: break
@@ -869,8 +611,8 @@ def main():
         streak_html = f'<div style="display:flex; align-items:center; gap: 4px;"><span style="font-size: 0.9rem;">🔥</span><span style="color: #ff9800; font-weight: bold; font-size: 0.9rem;">Racha: {streak} día</span></div>'
     else:
         streak_html = f'<div></div>'
-        
-    # --- Actualizar Placeholder Global ---
+
+    # --- TARJETA PRINCIPAL DE RESUMEN ---
     with st.container():
         st.markdown(f"""
             <div style="background-color: #1e1e1e; padding: 15px; border-radius: 10px; position: relative; z-index: 10;">
@@ -878,44 +620,35 @@ def main():
                     {streak_html}
                     <div></div>
                 </div>
-                <div style="width: 100%; font-size: 2.2rem; font-weight: bold; color: #fff; line-height: 1;">{total_html}</div>
+                <div style="width: 100%; font-size: 2.2rem; font-weight: bold; color: #fff; line-height: 1;">{total_hms}</div>
                 <div style="width:100%; background-color:#333; border-radius:10px; height:12px; margin: 15px 0;">
-                    <div style="width:{progreso_pct}%; background-color:{color_bar}; height:100%; border-radius:10px; transition: width 0.5s;"></div>
+                    <div style="width:{progreso_pct}%; background-color:{COLOR_PRINCIPAL}; height:100%; border-radius:10px; transition: width 0.5s;"></div>
                 </div>
                 <div style="display:flex; justify-content:space-between; color:#888;">
-                    {balance_html}
                     {hora_fin_html}
-                    {objetivo_html}
+                    <div>Objetivo: {objetivo_hms}</div>
                 </div>
             </div>
         """, unsafe_allow_html=True)
 
-        # --- MOSTRAR ANIMACIÓN ---
         if usuario_estudiando or otro_estudiando:
             st.markdown(generar_particulas(COLOR_PRINCIPAL), unsafe_allow_html=True)
         else:
             st.markdown("<div style='height:1rem;'></div>", unsafe_allow_html=True)
         
-        # --- HEATMAP ---
+        # --- HEATMAP DE HISTORIAL (ESTILO GITHUB) ---
         max_val_hist = max(user_hist) if max(user_hist) > 0 else 1.0
-        
         cells_html = ""
         for val in user_hist:
             if val <= 0:
                 level = 0
             else:
                 ratio = val / max_val_hist
-                if ratio <= 0.25:
-                    level = 1
-                elif ratio <= 0.50:
-                    level = 2
-                elif ratio <= 0.75:
-                    level = 3
-                else:
-                    level = 4
+                if ratio <= 0.25: level = 1
+                elif ratio <= 0.50: level = 2
+                elif ratio <= 0.75: level = 3
+                else: level = 4
             color_celda = PALETTE[level]
-            
-            # Formateador de texto flotante (Tooltip)
             val_str = f"{int(val)} hs" if val == int(val) else f"{val:.1f} hs"
             cells_html += f'<div class="heatmap-cell" style="background-color: {color_celda}; width: 25px; height: 25px; border-radius: 4px;" title="{val_str}"></div>'
 
@@ -943,8 +676,8 @@ def main():
         """, unsafe_allow_html=True)
 
         st.markdown("<div style='height:1rem;'></div>", unsafe_allow_html=True)
-        
-        # --- RENDERIZADO DE LA TARJETA DEL OTRO USUARIO + COMPARADOR ---
+
+        # --- ESTADO DEL OTRO USUARIO ---
         if otro_estudiando:
             st.markdown(f"""
                 <div style="
@@ -971,7 +704,7 @@ def main():
                 cargar_datos_unificados.clear()
                 st.rerun()
         
-        # --- SECCIÓN AESTHETIC: NO PENSAR, ACTUAR ---
+        # --- TEXTO MOTIVACIONAL ---
         md_content = st.secrets["facundo_md"] if USUARIO_ACTUAL == "Facundo" else st.secrets["ivan_md"]
         formatted_content = markdown.markdown(md_content)
         
@@ -983,15 +716,15 @@ def main():
             border-left: 2px solid #444;
             padding-left: 12px;
             line-height: 1.5;
+            margin-bottom: 20px;
         ">
             {formatted_content}
         </div>
         """, unsafe_allow_html=True)
     
-    # --- Actualizar Placeholders de Materias y Botones ---
+    # --- TARJETAS DE MATERIAS ---
     mis_materias = USERS_LOCAL[USUARIO_ACTUAL]
-    for materia, info in mis_materias.items():
-
+    for materia in mis_materias:
         base_seg = hms_a_segundos(datos[USUARIO_ACTUAL]["tiempos"][materia])
         tiempo_total_seg = base_seg
         en_curso = materia_en_curso == materia
@@ -999,14 +732,7 @@ def main():
         if en_curso:
             tiempo_total_seg += max(0, tiempo_anadido_seg)
 
-        tiempo_total_hms = segundos_a_hms(tiempo_total_seg)
-        
-        if mostrar_dinero_detallado:
-            dinero_materia = (tiempo_total_seg / 60) * m_rate
-            tiempo_display = f"{tiempo_total_hms} | ${dinero_materia:.2f}"
-        else:
-            tiempo_display = tiempo_total_hms
-
+        tiempo_display = segundos_a_hms(tiempo_total_seg)
         badge_html = f'<div class="status-badge status-active">{emoji_principal} Estudiando...</div>' if en_curso else ''
         
         html_card = f"""<div class="materia-card"><div class="materia-title">{materia}</div>{badge_html}<div class="materia-time">{tiempo_display}</div></div>"""
@@ -1055,7 +781,7 @@ def main():
                             batch_write([(time_cell_for_row, hhmmss)])
                             st.success("Tiempo corregido correctamente.")
                         except Exception as e:
-                            st.error(f"Error al corregir el tiempo: {e}")
+                            st.error(f"Error al corregir tiempo: {e}")
                         finally:
                             pedir_rerun()
 
@@ -1070,7 +796,6 @@ if __name__ == "__main__":
         main()
     except Exception as e:
         st.error(f"Error crítico en main(): {e}")
-        st.sidebar.error(f"Error crítico: {e}")
-        if st.sidebar.button("Reiniciar sesión (limpiar estado)"):
+        if st.sidebar.button("Reiniciar sesión"):
             st.session_state.clear()
             st.rerun()
