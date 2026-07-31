@@ -876,12 +876,7 @@ def main():
             <div style="background-color: #1e1e1e; padding: 15px; border-radius: 10px; position: relative; z-index: 10;">
                 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 12px;">
                     {streak_html}
-                    <div style="display:flex; align-items:center; gap:6px; font-size:0.9rem;">
-                        <span style="color:#aaa;">Deuda:</span>
-                        <span style="color:{pozo_color};">
-                            {pozo_html}
-                        </span>
-                    </div>
+                    <div></div>
                 </div>
                 <div style="width: 100%; font-size: 2.2rem; font-weight: bold; color: #fff; line-height: 1;">{total_html}</div>
                 <div style="width:100%; background-color:#333; border-radius:10px; height:12px; margin: 15px 0;">
