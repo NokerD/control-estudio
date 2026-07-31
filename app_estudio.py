@@ -882,7 +882,11 @@ def main():
                 <div style="width:100%; background-color:#333; border-radius:10px; height:12px; margin: 15px 0;">
                     <div style="width:{progreso_pct}%; background-color:{color_bar}; height:100%; border-radius:10px; transition: width 0.5s;"></div>
                 </div>
-                <div></div>
+                <div style="display:flex; justify-content:space-between; color:#888;">
+                    {balance_html}
+                    {hora_fin_html}
+                    {objetivo_html}
+                </div>
             </div>
         """, unsafe_allow_html=True)
 
