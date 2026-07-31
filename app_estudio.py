@@ -630,7 +630,7 @@ def main():
                 </div>
                 <div style="display:flex; justify-content:space-between; color:#888;">
                     {hora_fin_html}
-                    <div>Objetivo: {objetivo_hms}</div>
+                    <div>{objetivo_hms}</div>
                 </div>
             </div>
         """, unsafe_allow_html=True)
