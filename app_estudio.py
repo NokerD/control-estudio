@@ -315,7 +315,8 @@ def cargar_datos_unificados(fecha_str):
 
     row_end_facu = FILA_BASE2 + delta_today
     row_start_facu = max(FILA_BASE2, row_end_facu - 29)
-    range_hist_facu = f"'{SHEET_FACUNDO}'!H{row_start_facu}:H{row_end_facu}"
+    # CAMBIO: Se cambió la columna H por la G para Facundo
+    range_hist_facu = f"'{SHEET_FACUNDO}'!G{row_start_facu}:G{row_end_facu}"
 
     row_end_ivan = FILA_BASE + delta_today
     row_start_ivan = max(FILA_BASE, row_end_ivan - 29)
@@ -526,17 +527,33 @@ def main():
     materia_otro = next((m for m, v in datos[OTRO_USUARIO]["estado"].items() if str(v).strip() != ""), "")
     otro_estudiando = materia_otro != ""
 
-    # --- PALETAS Y COLORES ---
+    # --- PALETAS Y COLORES (AMPLIADO A 7 NIVELES: 0 al 6) ---
     if usuario_estudiando and otro_estudiando:
         COLOR_PRINCIPAL = "#00b0ff"
         COLOR_RGBA = "rgba(0, 176, 255, 0.2)"
         emoji_principal = "🔵"
-        PALETTE = {0: "#161b22", 1: "#0a3054", 2: "#004d80", 3: "#007acc", 4: "#00b0ff"}
+        PALETTE = {
+            0: "#161b22",
+            1: "#061e36",
+            2: "#0a3054",
+            3: "#004d80",
+            4: "#0063a6",
+            5: "#007acc",
+            6: "#00b0ff"
+        }
     else:
         COLOR_PRINCIPAL = "#00e676"
         COLOR_RGBA = "rgba(0, 230, 118, 0.2)"
         emoji_principal = "🟢"
-        PALETTE = {0: "#161b22", 1: "#0e4429", 2: "#006d32", 3: "#26a641", 4: "#00e676"}
+        PALETTE = {
+            0: "#161b22",
+            1: "#072b18",
+            2: "#0e4429",
+            3: "#006d32",
+            4: "#158a3f",
+            5: "#26a641",
+            6: "#00e676"
+        }
     
     cargar_estilos(COLOR_PRINCIPAL, COLOR_RGBA)
 
@@ -578,7 +595,15 @@ def main():
         COLOR_PRINCIPAL = "#ff9800"
         COLOR_RGBA = "rgba(255, 152, 0, 0.2)"
         emoji_principal = "🟠"
-        PALETTE = {0: "#161b22", 1: "#5a3200", 2: "#8a4f00", 3: "#c77700", 4: "#ff9800"}
+        PALETTE = {
+            0: "#161b22",
+            1: "#3d2100",
+            2: "#5a3200",
+            3: "#784200",
+            4: "#9e5900",
+            5: "#c77700",
+            6: "#ff9800"
+        }
         cargar_estilos(COLOR_PRINCIPAL, COLOR_RGBA)
         
         if "show_celebration" not in st.session_state:
@@ -640,7 +665,7 @@ def main():
         else:
             st.markdown("<div style='height:1rem;'></div>", unsafe_allow_html=True)
         
-        # --- HEATMAP DE HISTORIAL (ESTILO GITHUB) ---
+        # --- HEATMAP DE HISTORIAL (ESTILO GITHUB CON 7 NIVELES) ---
         max_val_hist = max(user_hist) if max(user_hist) > 0 else 1.0
         cells_html = ""
         for val in user_hist:
@@ -648,10 +673,13 @@ def main():
                 level = 0
             else:
                 ratio = val / max_val_hist
-                if ratio <= 0.25: level = 1
-                elif ratio <= 0.50: level = 2
-                elif ratio <= 0.75: level = 3
-                else: level = 4
+                if ratio <= 0.16: level = 1
+                elif ratio <= 0.33: level = 2
+                elif ratio <= 0.50: level = 3
+                elif ratio <= 0.66: level = 4
+                elif ratio <= 0.83: level = 5
+                else: level = 6
+
             color_celda = PALETTE[level]
             val_str = f"{int(val)} hs" if val == int(val) else f"{val:.1f} hs"
             cells_html += f'<div class="heatmap-cell" style="background-color: {color_celda}; width: 25px; height: 25px; border-radius: 4px;" title="{val_str}"></div>'
