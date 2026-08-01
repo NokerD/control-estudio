@@ -564,19 +564,22 @@ def main():
     materia_otro = next((m for m, v in datos[OTRO_USUARIO]["estado"].items() if str(v).strip() != ""), "")
     otro_estudiando = materia_otro != ""
 
-    # --- PALETAS Y COLORES (7 NIVELES: 0 al 6) ---
+    # --- PALETAS Y COLORES (10 NIVELES: 0 al 9) ---
     if usuario_estudiando and otro_estudiando:
         COLOR_PRINCIPAL = "#00b0ff"
         COLOR_RGBA = "rgba(0, 176, 255, 0.2)"
         emoji_principal = "🔵"
         PALETTE = {
             0: "#161b22",
-            1: "#061e36",
-            2: "#0a3054",
-            3: "#004d80",
-            4: "#0063a6",
-            5: "#007acc",
-            6: "#00b0ff"
+            1: "#041629",
+            2: "#062240",
+            3: "#082d56",
+            4: "#0a396d",
+            5: "#00487d",
+            6: "#005c9e",
+            7: "#0070c0",
+            8: "#008df5",
+            9: "#00b0ff"
         }
     else:
         COLOR_PRINCIPAL = "#00e676"
@@ -584,12 +587,15 @@ def main():
         emoji_principal = "🟢"
         PALETTE = {
             0: "#161b22",
-            1: "#072b18",
-            2: "#0e4429",
-            3: "#006d32",
-            4: "#158a3f",
-            5: "#26a641",
-            6: "#00e676"
+            1: "#051f11",
+            2: "#08331b",
+            3: "#0a4726",
+            4: "#0a592e",
+            5: "#0c6e39",
+            6: "#0e8544",
+            7: "#119c50",
+            8: "#18ba62",
+            9: "#00e676"
         }
     
     cargar_estilos(COLOR_PRINCIPAL, COLOR_RGBA)
@@ -634,12 +640,15 @@ def main():
         emoji_principal = "🟠"
         PALETTE = {
             0: "#161b22",
-            1: "#3d2100",
-            2: "#5a3200",
-            3: "#784200",
-            4: "#9e5900",
-            5: "#c77700",
-            6: "#ff9800"
+            1: "#291600",
+            2: "#402200",
+            3: "#562d00",
+            4: "#6e3a00",
+            5: "#854600",
+            6: "#9e5300",
+            7: "#b86100",
+            8: "#d97400",
+            9: "#ff9800"
         }
         cargar_estilos(COLOR_PRINCIPAL, COLOR_RGBA)
         
@@ -702,7 +711,7 @@ def main():
         else:
             st.markdown("<div style='height:1rem;'></div>", unsafe_allow_html=True)
         
-        # --- HEATMAP DE HISTORIAL (MAPEADO POR FECHA EXACTA) ---
+# --- HEATMAP DE HISTORIAL (MAPEADO POR FECHA EXACTA) ---
         max_val_hist = max(user_hist) if max(user_hist) > 0 else 1.0
         cells_html = ""
         for val in user_hist:
@@ -710,12 +719,15 @@ def main():
                 level = 0
             else:
                 ratio = val / max_val_hist
-                if ratio <= 0.16: level = 1
-                elif ratio <= 0.33: level = 2
-                elif ratio <= 0.50: level = 3
-                elif ratio <= 0.66: level = 4
-                elif ratio <= 0.83: level = 5
-                else: level = 6
+                if ratio <= 0.11: level = 1
+                elif ratio <= 0.22: level = 2
+                elif ratio <= 0.33: level = 3
+                elif ratio <= 0.44: level = 4
+                elif ratio <= 0.55: level = 5
+                elif ratio <= 0.66: level = 6
+                elif ratio <= 0.77: level = 7
+                elif ratio <= 0.88: level = 8
+                else: level = 9
 
             color_celda = PALETTE[level]
             val_str = f"{int(val)} hs" if val == int(val) else f"{val:.1f} hs"
