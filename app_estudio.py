@@ -155,6 +155,29 @@ def parse_datetime(s):
             continue
     raise ValueError(f"Formato inválido: {s}")
 
+def parse_sheet_date(s, default_year=None):
+    if not s or str(s).strip() == "":
+        return None
+    s = str(s).strip()
+    if default_year is None:
+        default_year = _argentina_now_global().year
+
+    fmts = [
+        "%d/%m/%Y", "%d/%m/%y",
+        "%Y-%m-%d", "%Y/%m/%d",
+        "%d-%m-%Y", "%d-%m-%y",
+        "%d/%m", "%d-%m"
+    ]
+    for fmt in fmts:
+        try:
+            dt = datetime.strptime(s, fmt)
+            if "%Y" not in fmt and "%y" not in fmt:
+                dt = dt.replace(year=default_year)
+            return dt.date()
+        except ValueError:
+            continue
+    return None
+
 def hms_a_segundos(hms):
     if not hms: return 0
     try:
@@ -309,18 +332,15 @@ def cargar_datos_unificados(fecha_str):
     all_ranges.append(RANGO_OBJ_FACU); mapa_indices["objs"]["Facundo"] = idx; idx += 1
     all_ranges.append(RANGO_OBJ_IVAN); mapa_indices["objs"]["Iván"] = idx; idx += 1
 
-    # HISTORIAL DE LOS ÚLTIMOS 30 DÍAS
+    # RANGOS PARA MAPEAR HISTORIAL POR FECHAS (COLUMNAS A HASTA G)
     target_date = datetime.strptime(fecha_str, "%Y-%m-%d").date()
     delta_today = (target_date - FECHA_BASE).days
 
     row_end_facu = FILA_BASE2 + delta_today
-    row_start_facu = max(FILA_BASE2, row_end_facu - 29)
-    # CAMBIO: Se cambió la columna H por la G para Facundo
-    range_hist_facu = f"'{SHEET_FACUNDO}'!G{row_start_facu}:G{row_end_facu}"
+    range_hist_facu = f"'{SHEET_FACUNDO}'!A15:G{row_end_facu + 10}"
 
     row_end_ivan = FILA_BASE + delta_today
-    row_start_ivan = max(FILA_BASE, row_end_ivan - 29)
-    range_hist_ivan = f"'{SHEET_IVAN}'!G{row_start_ivan}:G{row_end_ivan}"
+    range_hist_ivan = f"'{SHEET_IVAN}'!A5:G{row_end_ivan + 10}"
 
     all_ranges.append(range_hist_facu); mapa_indices["hist_facu"] = idx; idx += 1
     all_ranges.append(range_hist_ivan); mapa_indices["hist_ivan"] = idx; idx += 1
@@ -339,18 +359,35 @@ def cargar_datos_unificados(fecha_str):
         if not rows: return default
         return rows[0][0] if rows[0] else default
 
-    def get_list_val(i, default_len=30):
+    def get_hist_by_date(i, target_date_obj, default_len=30):
         if i >= len(values): return [0.0] * default_len
         vr = values[i]
         rows = vr.get("values", [])
+        
+        date_map = {}
+        for r in rows:
+            if not r: continue
+            col_a = r[0] if len(r) > 0 else ""
+            col_g = r[6] if len(r) > 6 else "0"
+            dt = parse_sheet_date(col_a)
+            if dt:
+                date_map[dt] = parse_float_or_zero(col_g)
+
+        if date_map:
+            res_list = []
+            start_date = target_date_obj - timedelta(days=default_len - 1)
+            for d_offset in range(default_len):
+                d = start_date + timedelta(days=d_offset)
+                res_list.append(date_map.get(d, 0.0))
+            return res_list
+
         float_list = []
         for r in rows:
-            val = r[0] if r else "0"
+            val = r[6] if len(r) > 6 else (r[0] if r else "0")
             float_list.append(parse_float_or_zero(val))
-        
         while len(float_list) < default_len:
             float_list.insert(0, 0.0)
-        return float_list[:default_len]
+        return float_list[-default_len:]
 
     data_usuarios = {u: {"estado": {}, "tiempos": {}} for u in USERS_LOCAL}
     materia_en_curso = None
@@ -379,8 +416,8 @@ def cargar_datos_unificados(fecha_str):
         "Iván": parse_float_or_zero(get_val(mapa_indices["objs"]["Iván"]))
     }
 
-    hist_facu_vals = get_list_val(mapa_indices["hist_facu"])
-    hist_ivan_vals = get_list_val(mapa_indices["hist_ivan"])
+    hist_facu_vals = get_hist_by_date(mapa_indices["hist_facu"], target_date)
+    hist_ivan_vals = get_hist_by_date(mapa_indices["hist_ivan"], target_date)
 
     if "usuario_seleccionado" in st.session_state:
         st.session_state["materia_activa"] = materia_en_curso
@@ -527,7 +564,7 @@ def main():
     materia_otro = next((m for m, v in datos[OTRO_USUARIO]["estado"].items() if str(v).strip() != ""), "")
     otro_estudiando = materia_otro != ""
 
-    # --- PALETAS Y COLORES (AMPLIADO A 7 NIVELES: 0 al 6) ---
+    # --- PALETAS Y COLORES (7 NIVELES: 0 al 6) ---
     if usuario_estudiando and otro_estudiando:
         COLOR_PRINCIPAL = "#00b0ff"
         COLOR_RGBA = "rgba(0, 176, 255, 0.2)"
@@ -571,11 +608,11 @@ def main():
     if usuario_estudiando and inicio_dt is not None:
         tiempo_anadido_seg = int((_argentina_now_global() - inicio_dt).total_seconds())
 
-    # --- SUMAR TODOS LOS TIEMPOS DE LAS MATERIAS (IGNORANDO LAS QUE TIENEN "excluir": True) ---
+    # --- SUMAR TODOS LOS TIEMPOS DE LAS MATERIAS ---
     total_segs = 0
     for materia, info in USERS_LOCAL[USUARIO_ACTUAL].items():
         if info.get("excluir"):
-            continue  # Saltear materias excluidas del total superior
+            continue
         
         base_seg = hms_a_segundos(datos[USUARIO_ACTUAL]["tiempos"][materia])
         if usuario_estudiando and materia == materia_en_curso:
@@ -586,7 +623,7 @@ def main():
     total_min = total_segs / 60
     total_hms = segundos_a_hms(total_segs)
 
-    # --- OBJETIVO UNICO (CELDA FIJA EN MINUTOS) ---
+    # --- OBJETIVO UNICO ---
     m_obj = datos_globales["objs"][USUARIO_ACTUAL]
     objetivo_hms = segundos_a_hms(int(m_obj * 60))
     progreso_pct = min(total_min / max(1.0, m_obj), 1.0) * 100
@@ -613,7 +650,7 @@ def main():
         st.balloons()
         st.session_state.show_celebration = False
 
-    # Hora de fin estimada (solo si está estudiando una materia no excluida)
+    # Hora de fin estimada
     hora_fin_html = "<div></div>"
     materia_actual_excluida = USERS_LOCAL[USUARIO_ACTUAL].get(materia_en_curso, {}).get("excluir", False) if materia_en_curso else False
     if usuario_estudiando and not materia_actual_excluida and total_min < m_obj:
@@ -665,7 +702,7 @@ def main():
         else:
             st.markdown("<div style='height:1rem;'></div>", unsafe_allow_html=True)
         
-        # --- HEATMAP DE HISTORIAL (ESTILO GITHUB CON 7 NIVELES) ---
+        # --- HEATMAP DE HISTORIAL (MAPEADO POR FECHA EXACTA) ---
         max_val_hist = max(user_hist) if max(user_hist) > 0 else 1.0
         cells_html = ""
         for val in user_hist:
