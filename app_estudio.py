@@ -1667,10 +1667,10 @@ def main():
                     </div>
                 </div>
                 {trabajo_progreso_html}
-                <div style="color:#888; margin-top: 12px;">
-                    {hora_fin_texto}
-                </div>
         """, unsafe_allow_html=True)
+
+        if hora_fin_texto:
+            st.caption(hora_fin_texto)
 
         if usuario_estudiando or otro_estudiando:
             st.markdown(generar_particulas(COLOR_PRINCIPAL), unsafe_allow_html=True)
