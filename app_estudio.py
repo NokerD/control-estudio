@@ -1587,7 +1587,7 @@ def main():
         st.session_state.show_celebration = False
 
     # Hora de fin estimada
-    hora_fin_html = "<div></div>"
+    hora_fin_texto = ""
     materia_actual_excluida = USERS_LOCAL[USUARIO_ACTUAL].get(materia_en_curso, {}).get("excluir", False) if materia_en_curso else False
     materias_del_plan = set(obtener_materias_estudio(plan_estudio))
     if (
@@ -1598,7 +1598,7 @@ def main():
     ):
         minutos_restantes = m_obj - total_min
         hora_fin_obj = _argentina_now_global() + timedelta(minutes=minutos_restantes)
-        hora_fin_html = f'<div style="color:#aaa;">Terminás a las {hora_fin_obj.strftime("%H:%M")}</div>'
+        hora_fin_texto = f'Terminás a las {hora_fin_obj.strftime("%H:%M")}'
 
     if otro_estudiando:
         estado_ivan_html = (
@@ -1668,7 +1668,7 @@ def main():
                 </div>
                 {trabajo_progreso_html}
                 <div style="color:#888; margin-top: 12px;">
-                    {hora_fin_html}
+                    {hora_fin_texto}
                 </div>
         """, unsafe_allow_html=True)
 
