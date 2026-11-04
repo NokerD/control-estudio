@@ -1670,6 +1670,7 @@ def main():
         """, unsafe_allow_html=True)
 
         if hora_fin_texto:
+            st.markdown("<div style='height: 8px;'></div>", unsafe_allow_html=True)
             st.caption(hora_fin_texto)
 
         if usuario_estudiando or otro_estudiando:
