@@ -14,7 +14,7 @@ from google.auth.transport.requests import AuthorizedSession
 from requests.exceptions import RequestException
 
 st.set_page_config(
-    page_title="Temporizador de Estudio",
+    page_title="Temporizador de Facundo",
     page_icon="📚",
     layout="centered",
 )
@@ -121,11 +121,59 @@ def cargar_estilos(color_principal="#00e676", color_principal_rgba="rgba(0, 230,
             color: #858a94;
             font-size: 0.78rem;
         }}
+        .cuatri-panel {{
+            margin-top: 12px;
+            padding: 14px;
+            border: 1px solid #343942;
+            border-radius: 12px;
+            background: linear-gradient(145deg, #22242b, #1b1c21);
+        }}
+        .cuatri-heading {{
+            color: #c9cbd1;
+            font-size: 0.78rem;
+            font-weight: 700;
+            letter-spacing: 0.07em;
+            text-transform: uppercase;
+            margin-bottom: 10px;
+        }}
+        .cuatri-periods {{
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 9px;
+        }}
+        .cuatri-period {{
+            padding: 10px 12px;
+            border-radius: 9px;
+            background: rgba(255,255,255,0.035);
+        }}
+        .cuatri-label {{ color: #9398a2; font-size: 0.76rem; }}
+        .cuatri-count {{
+            margin-top: 3px;
+            color: #fff;
+            font-size: 1.35rem;
+            font-weight: 700;
+            font-variant-numeric: tabular-nums;
+        }}
+        .cuatri-detail {{ margin-top: 2px; color: #777e89; font-size: 0.72rem; }}
+        .cuatri-summary {{
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 8px;
+            margin-top: 10px;
+            padding-top: 10px;
+            border-top: 1px solid #343942;
+        }}
+        .cuatri-summary-item {{ min-width: 0; }}
+        .cuatri-summary-label {{ color: #858a94; font-size: 0.7rem; }}
+        .cuatri-summary-value {{ color: #e8e9ec; font-size: 0.95rem; font-weight: 700; }}
+        .cuatri-summary-detail {{ color: #777e89; font-size: 0.66rem; }}
         @media (max-width: 520px) {{
             .record-grid {{ gap: 7px; }}
             .record-card {{ padding: 10px; }}
             .record-value {{ font-size: 1.12rem; }}
             .record-label, .record-detail {{ font-size: 0.7rem; }}
+            .cuatri-panel {{ padding: 10px; }}
+            .cuatri-summary {{ grid-template-columns: repeat(2, minmax(0, 1fr)); }}
         }}
 
         .st-key-tarjeta-resumen {{
@@ -135,6 +183,7 @@ def cargar_estilos(color_principal="#00e676", color_principal_rgba="rgba(0, 230,
             position: relative;
             z-index: 10;
         }}
+
         div[data-testid="stElementContainer"].st-key-habito_d button,
         div[data-testid="stElementContainer"].st-key-habito_b button,
         div[data-testid="stElementContainer"].st-key-habito_d_solo button,
@@ -389,6 +438,60 @@ def calcular_records_estudio(historial_diario, fecha_actual, segundos_hoy=0):
         "diario_fecha": record_diario[0],
     }
 
+
+def calcular_metricas_cuatri(historial_diario, objetivo_segundos, fecha_actual, segundos_hoy=0):
+    """Cuenta días que alcanzaron la meta, por cuatrimestre y en total."""
+    dias = {
+        fecha: max(0, int(segundos))
+        for fecha, segundos in (historial_diario or {}).items()
+        if FECHA_BASE <= fecha <= fecha_actual
+    }
+    dias[fecha_actual] = max(dias.get(fecha_actual, 0), int(segundos_hoy or 0))
+    meta = max(1, int(objetivo_segundos or 0))
+    cumplidos = {fecha for fecha, segundos in dias.items() if segundos >= meta}
+    anio = fecha_actual.year
+    inicio_cuatri_1 = date(anio, 3, 1)
+    fin_cuatri_1 = date(anio, 7, 31)
+    inicio_cuatri_2 = date(anio, 8, 1)
+    fin_cuatri_2 = date(anio, 12, 31)
+
+    semanas = {}
+    for fecha in cumplidos:
+        lunes = fecha - timedelta(days=fecha.weekday())
+        semanas[lunes] = semanas.get(lunes, 0) + 1
+    mejor_semana_inicio, mejor_semana_dias = max(
+        semanas.items(), key=lambda item: (item[1], -item[0].toordinal()), default=(None, 0)
+    )
+
+    racha_maxima = 0
+    racha_inicio = None
+    racha_fin = None
+    racha_actual = 0
+    inicio_actual = None
+    fecha_anterior = None
+    for fecha in sorted(cumplidos):
+        if fecha_anterior == fecha - timedelta(days=1):
+            racha_actual += 1
+        else:
+            racha_actual = 1
+            inicio_actual = fecha
+        if racha_actual > racha_maxima:
+            racha_maxima = racha_actual
+            racha_inicio = inicio_actual
+            racha_fin = fecha
+        fecha_anterior = fecha
+
+    return {
+        "cuatri_1": sum(inicio_cuatri_1 <= fecha <= fin_cuatri_1 for fecha in cumplidos),
+        "cuatri_2": sum(inicio_cuatri_2 <= fecha <= fin_cuatri_2 for fecha in cumplidos),
+        "total": len(cumplidos),
+        "mejor_semana_dias": mejor_semana_dias,
+        "mejor_semana_inicio": mejor_semana_inicio,
+        "racha_maxima": racha_maxima,
+        "racha_inicio": racha_inicio,
+        "racha_fin": racha_fin,
+    }
+
 def replace_row_in_range(range_str, new_row):
     if not isinstance(range_str, str): return range_str
     return re.sub(r'(\d+)(\s*$)', str(new_row), range_str)
@@ -479,7 +582,6 @@ SHEET_FACUNDO = "F. Materias"
 SHEET_IVAN = "I. Materias"
 SHEET_MARCAS = "marcas"
 RANGO_OBJ_IVAN = f"'{SHEET_MARCAS}'!O2"
-RANGO_OBJ_FACU = f"'{SHEET_MARCAS}'!P2"
 RANGOS_ESTADO_IVAN = {
     "Física": f"'{SHEET_MARCAS}'!Z8",
     "Análisis": f"'{SHEET_MARCAS}'!Z9",
@@ -900,6 +1002,7 @@ def cargar_datos_unificados(fecha_str):
 
     row_end_facu = FILA_BASE2 + delta_today
     range_hist_facu = f"'{SHEET_FACUNDO}'!A15:G{row_end_facu + 10}"
+
     all_ranges.append(range_hist_facu); mapa_indices["hist_facu"] = idx; idx += 1
 
     row_end_ivan = FILA_BASE + delta_today
@@ -1350,7 +1453,7 @@ def main():
         st.error(st.session_state.pop("error_cambio_materia"))
     if st.session_state.get("error_habito_registrado"):
         st.error(st.session_state.pop("error_habito_registrado"))
-
+        
     if st.session_state.get("usuario_seleccionado") not in {"Facundo", "Iván"}:
         st.session_state["usuario_seleccionado"] = "Facundo"
     st.sidebar.radio(
@@ -1360,7 +1463,7 @@ def main():
         horizontal=False,
     )
     USUARIO_ACTUAL = st.session_state["usuario_seleccionado"]
-        
+
     hoy_str = _argentina_now_global().strftime("%Y-%m-%d")
     datos_globales = cargar_datos_unificados(hoy_str)
     
@@ -1394,8 +1497,8 @@ def main():
         else ""
     )
 
-    materia_para_extension = materia_en_curso or (materia_otro if otro_estudiando else None)
-    if not guardar_estado_actividad_extension(materia_para_extension, PLAN_ESTUDIO):
+    materia_extension = materia_en_curso or (materia_otro if otro_estudiando else None)
+    if not guardar_estado_actividad_extension(materia_extension, PLAN_ESTUDIO):
         st.warning(
             "No se pudo actualizar el estado para la extensión en "
             "`tools/youtube-codex/data/actividad.txt`."
@@ -1486,12 +1589,36 @@ def main():
 
     total_min = total_segs / 60
     total_hms = segundos_a_hms(total_segs)
-    historiales_por_usuario = datos_globales["historiales_diarios"]
+    historial_usuario = datos_globales["historiales_diarios"].get(USUARIO_ACTUAL, {})
     records_estudio = calcular_records_estudio(
-        historiales_por_usuario.get(USUARIO_ACTUAL, {}),
+        historial_usuario,
         _argentina_now_global().date(),
         segundos_hoy=total_segs,
     )
+    metricas_cuatri = calcular_metricas_cuatri(
+        historial_usuario,
+        resumen_plan["objetivo_estudio_seg"],
+        _argentina_now_global().date(),
+        segundos_hoy=total_segs,
+    )
+    anio_metricas = _argentina_now_global().year
+    cuatri_1_titulo = f"Cuatrimestre 1 · {anio_metricas}"
+    cuatri_2_titulo = f"Cuatrimestre 2 · {anio_metricas}"
+    mejor_semana_valor = f'{metricas_cuatri["mejor_semana_dias"]}/7 días'
+    if metricas_cuatri["mejor_semana_inicio"]:
+        mejor_semana_detalle = (
+            f'{metricas_cuatri["mejor_semana_inicio"].strftime("%d/%m")}–'
+            f'{(metricas_cuatri["mejor_semana_inicio"] + timedelta(days=6)).strftime("%d/%m")}'
+        )
+    else:
+        mejor_semana_detalle = "Todavía sin metas cumplidas"
+    if metricas_cuatri["racha_inicio"]:
+        racha_meta_detalle = (
+            f'{metricas_cuatri["racha_inicio"].strftime("%d/%m")}–'
+            f'{metricas_cuatri["racha_fin"].strftime("%d/%m")}'
+        )
+    else:
+        racha_meta_detalle = "Todavía sin metas cumplidas"
     racha_record_valor = (
         f'{records_estudio["racha_dias"]} día'
         f'{"s" if records_estudio["racha_dias"] != 1 else ""}'
@@ -1721,6 +1848,41 @@ def main():
                     <div class="record-label">⏱ Récord en un día</div>
                     <div class="record-value" style="color:{COLOR_PRINCIPAL};">{diario_record_valor}</div>
                     <div class="record-detail">{diario_record_detalle}</div>
+                </div>
+            </div>
+        """, unsafe_allow_html=True)
+
+        st.markdown(f"""
+            <div class="cuatri-panel">
+                <div class="cuatri-heading">Días con objetivo cumplido · meta {objetivo_estudio_hms}</div>
+                <div class="cuatri-periods">
+                    <div class="cuatri-period">
+                        <div class="cuatri-label">{cuatri_1_titulo}</div>
+                        <div class="cuatri-count" style="color:{COLOR_PRINCIPAL};">{metricas_cuatri["cuatri_1"]} días</div>
+                        <div class="cuatri-detail">Marzo – julio</div>
+                    </div>
+                    <div class="cuatri-period">
+                        <div class="cuatri-label">{cuatri_2_titulo}</div>
+                        <div class="cuatri-count" style="color:{COLOR_PRINCIPAL};">{metricas_cuatri["cuatri_2"]} días</div>
+                        <div class="cuatri-detail">Agosto – diciembre</div>
+                    </div>
+                </div>
+                <div class="cuatri-summary">
+                    <div class="cuatri-summary-item">
+                        <div class="cuatri-summary-label">Total</div>
+                        <div class="cuatri-summary-value">{metricas_cuatri["total"]} días</div>
+                        <div class="cuatri-summary-detail">Desde {FECHA_BASE.strftime("%d/%m/%Y")}</div>
+                    </div>
+                    <div class="cuatri-summary-item">
+                        <div class="cuatri-summary-label">Mejor semana</div>
+                        <div class="cuatri-summary-value">{mejor_semana_valor}</div>
+                        <div class="cuatri-summary-detail">{mejor_semana_detalle}</div>
+                    </div>
+                    <div class="cuatri-summary-item">
+                        <div class="cuatri-summary-label">Racha de metas</div>
+                        <div class="cuatri-summary-value">{metricas_cuatri["racha_maxima"]} días</div>
+                        <div class="cuatri-summary-detail">{racha_meta_detalle}</div>
+                    </div>
                 </div>
             </div>
         """, unsafe_allow_html=True)
