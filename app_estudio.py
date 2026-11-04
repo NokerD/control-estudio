@@ -135,17 +135,6 @@ def cargar_estilos(color_principal="#00e676", color_principal_rgba="rgba(0, 230,
             position: relative;
             z-index: 10;
         }}
-        .st-key-selector-perfil {{
-            padding: 8px 14px;
-            margin-bottom: 12px;
-            border: 1px solid #343942;
-            border-radius: 12px;
-            background: #1b1c21;
-        }}
-        .st-key-selector-perfil [data-testid="stRadio"] {{
-            justify-content: center;
-        }}
-
         div[data-testid="stElementContainer"].st-key-habito_d button,
         div[data-testid="stElementContainer"].st-key-habito_b button,
         div[data-testid="stElementContainer"].st-key-habito_d_solo button,
@@ -1364,14 +1353,12 @@ def main():
 
     if st.session_state.get("usuario_seleccionado") not in {"Facundo", "Iván"}:
         st.session_state["usuario_seleccionado"] = "Facundo"
-    with st.container(key="selector-perfil"):
-        st.radio(
-            "Perfil",
-            options=("Facundo", "Iván"),
-            horizontal=True,
-            key="usuario_seleccionado",
-            label_visibility="collapsed",
-        )
+    st.sidebar.radio(
+        "Perfil",
+        options=("Facundo", "Iván"),
+        key="usuario_seleccionado",
+        horizontal=False,
+    )
     USUARIO_ACTUAL = st.session_state["usuario_seleccionado"]
         
     hoy_str = _argentina_now_global().strftime("%Y-%m-%d")
