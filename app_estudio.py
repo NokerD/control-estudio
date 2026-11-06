@@ -71,6 +71,29 @@ def cargar_estilos(color_principal="#00e676", color_principal_rgba="rgba(0, 230,
             filter: brightness(1.3);
             cursor: pointer;
         }}
+
+        .record-grid {{
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 10px;
+            margin-top: 14px;
+        }}
+        .record-card {{
+            min-width: 0;
+            padding: 12px 14px;
+            border: 1px solid #343942;
+            border-radius: 10px;
+            background: linear-gradient(145deg, #24262d, #1b1c21);
+        }}
+        .record-label {{ color: #969ba5; font-size: 0.76rem; letter-spacing: 0.06em; text-transform: uppercase; }}
+        .record-value {{ margin-top: 4px; color: #fff; font-size: 1.3rem; font-weight: 700; line-height: 1.2; font-variant-numeric: tabular-nums; }}
+        .record-detail {{ margin-top: 4px; color: #858a94; font-size: 0.78rem; }}
+        @media (max-width: 520px) {{
+            .record-grid {{ gap: 7px; }}
+            .record-card {{ padding: 10px; }}
+            .record-value {{ font-size: 1.12rem; }}
+            .record-label, .record-detail {{ font-size: 0.7rem; }}
+        }}
         </style>
     """, unsafe_allow_html=True)
 
@@ -211,6 +234,63 @@ def parse_time_cell_to_seconds(val):
         return int(f)
     except:
         return 0
+
+
+def parse_historial_study_seconds(value):
+    """Lee la columna G como duración o como horas decimales."""
+    if value is None or str(value).strip() == "":
+        return 0
+    raw = str(value).strip()
+    if ":" in raw:
+        return parse_time_cell_to_seconds(raw)
+    return max(0, int(round(parse_float_or_zero(raw) * 3600)))
+
+
+def calcular_records_estudio(historial_diario, fecha_actual, segundos_hoy=0):
+    """Calcula la racha común y el mayor tiempo de estudio en un día."""
+    dias = {
+        fecha: max(0, int(segundos))
+        for fecha, segundos in (historial_diario or {}).items()
+        if fecha <= fecha_actual
+    }
+    dias[fecha_actual] = max(dias.get(fecha_actual, 0), int(segundos_hoy or 0))
+
+    record_diario = max(
+        ((fecha, segundos) for fecha, segundos in dias.items() if segundos > 0),
+        key=lambda item: item[1],
+        default=(None, 0),
+    )
+
+    mejor_racha = 0
+    mejor_inicio = None
+    mejor_fin = None
+    racha_actual = 0
+    inicio_actual = None
+    fecha_anterior = None
+    for fecha in sorted(dias):
+        if dias[fecha] > 0:
+            if fecha_anterior == fecha - timedelta(days=1):
+                racha_actual += 1
+            else:
+                racha_actual = 1
+                inicio_actual = fecha
+            if racha_actual > mejor_racha:
+                mejor_racha = racha_actual
+                mejor_inicio = inicio_actual
+                mejor_fin = fecha
+            fecha_anterior = fecha
+        else:
+            racha_actual = 0
+            inicio_actual = None
+            fecha_anterior = None
+
+    return {
+        "racha_dias": mejor_racha,
+        "racha_inicio": mejor_inicio,
+        "racha_fin": mejor_fin,
+        "diario_segundos": record_diario[1],
+        "diario_fecha": record_diario[0],
+    }
 
 def replace_row_in_range(range_str, new_row):
     if not isinstance(range_str, str): return range_str
@@ -416,8 +496,26 @@ def cargar_datos_unificados(fecha_str):
         "Iván": parse_float_or_zero(get_val(mapa_indices["objs"]["Iván"]))
     }
 
-    hist_facu_vals = get_hist_by_date(mapa_indices["hist_facu"], target_date)
-    hist_ivan_vals = get_hist_by_date(mapa_indices["hist_ivan"], target_date)
+    hist_facu_idx = mapa_indices["hist_facu"]
+    hist_ivan_idx = mapa_indices["hist_ivan"]
+    hist_facu_vals = get_hist_by_date(hist_facu_idx, target_date)
+    hist_ivan_vals = get_hist_by_date(hist_ivan_idx, target_date)
+
+    def get_historial_diario(i):
+        historial = {}
+        if i < len(values):
+            for row in values[i].get("values", []):
+                if not row:
+                    continue
+                fecha = parse_sheet_date(row[0] if row else "")
+                if fecha is None or fecha > target_date:
+                    continue
+                valor_g = row[6] if len(row) > 6 else ""
+                historial[fecha] = parse_historial_study_seconds(valor_g)
+        return historial
+
+    historial_diario_facu = get_historial_diario(hist_facu_idx)
+    historial_diario_ivan = get_historial_diario(hist_ivan_idx)
 
     if "usuario_seleccionado" in st.session_state:
         st.session_state["materia_activa"] = materia_en_curso
@@ -427,7 +525,9 @@ def cargar_datos_unificados(fecha_str):
         "users_data": data_usuarios,
         "objs": objs,
         "hist_facu": hist_facu_vals,
-        "hist_ivan": hist_ivan_vals
+        "hist_ivan": hist_ivan_vals,
+        "historial_diario_facu": historial_diario_facu,
+        "historial_diario_ivan": historial_diario_ivan,
     }
 
 def batch_write(updates):
@@ -628,6 +728,42 @@ def main():
 
     total_min = total_segs / 60
     total_hms = segundos_a_hms(total_segs)
+    historial_diario_usuario = (
+        datos_globales["historial_diario_facu"]
+        if USUARIO_ACTUAL == "Facundo"
+        else datos_globales["historial_diario_ivan"]
+    )
+    records_estudio = calcular_records_estudio(
+        historial_diario_usuario,
+        _argentina_now_global().date(),
+        segundos_hoy=total_segs,
+    )
+    racha_record_valor = (
+        f'{records_estudio["racha_dias"]} día'
+        f'{"s" if records_estudio["racha_dias"] != 1 else ""}'
+        if records_estudio["racha_dias"]
+        else "—"
+    )
+    if records_estudio["racha_inicio"]:
+        if records_estudio["racha_inicio"] == records_estudio["racha_fin"]:
+            racha_record_detalle = records_estudio["racha_fin"].strftime("%d/%m/%Y")
+        else:
+            racha_record_detalle = (
+                f'{records_estudio["racha_inicio"].strftime("%d/%m/%Y")} – '
+                f'{records_estudio["racha_fin"].strftime("%d/%m/%Y")}'
+            )
+    else:
+        racha_record_detalle = "Todavía sin rachas"
+    diario_record_valor = (
+        segundos_a_hms(records_estudio["diario_segundos"])
+        if records_estudio["diario_segundos"]
+        else "—"
+    )
+    diario_record_detalle = (
+        records_estudio["diario_fecha"].strftime("%d/%m/%Y")
+        if records_estudio["diario_fecha"]
+        else "Todavía sin registros"
+    )
 
     # --- OBJETIVO UNICO ---
     m_obj = datos_globales["objs"][USUARIO_ACTUAL]
@@ -752,6 +888,21 @@ def main():
                     font-family: sans-serif;
                 ">
                     {cells_html}
+                </div>
+            </div>
+        """, unsafe_allow_html=True)
+
+        st.markdown(f"""
+            <div class="record-grid">
+                <div class="record-card">
+                    <div class="record-label">🏆 Racha récord</div>
+                    <div class="record-value" style="color:{COLOR_PRINCIPAL};">{racha_record_valor}</div>
+                    <div class="record-detail">{racha_record_detalle}</div>
+                </div>
+                <div class="record-card">
+                    <div class="record-label">⏱ Récord en un día</div>
+                    <div class="record-value" style="color:{COLOR_PRINCIPAL};">{diario_record_valor}</div>
+                    <div class="record-detail">{diario_record_detalle}</div>
                 </div>
             </div>
         """, unsafe_allow_html=True)
