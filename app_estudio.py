@@ -681,7 +681,7 @@ def main():
             8: "#008df5",
             9: "#00b0ff"
         }
-    else:
+    elif usuario_estudiando:
         COLOR_PRINCIPAL = "#00e676"
         COLOR_RGBA = "rgba(0, 230, 118, 0.2)"
         emoji_principal = "🟢"
@@ -696,6 +696,22 @@ def main():
             7: "#119c50",
             8: "#18ba62",
             9: "#00e676"
+        }
+    else:
+        COLOR_PRINCIPAL = "#9aa0a6"
+        COLOR_RGBA = "rgba(154, 160, 166, 0.18)"
+        emoji_principal = "⚪"
+        PALETTE = {
+            0: "#161b22",
+            1: "#292d33",
+            2: "#363b43",
+            3: "#444a53",
+            4: "#535a64",
+            5: "#626a75",
+            6: "#727a85",
+            7: "#828a95",
+            8: "#8d959f",
+            9: "#9aa0a6"
         }
     
     cargar_estilos(COLOR_PRINCIPAL, COLOR_RGBA)
@@ -842,7 +858,7 @@ def main():
             </div>
         """, unsafe_allow_html=True)
 
-        if usuario_estudiando or otro_estudiando:
+        if usuario_estudiando:
             st.markdown(generar_particulas(COLOR_PRINCIPAL), unsafe_allow_html=True)
         else:
             st.markdown("<div style='height:1rem;'></div>", unsafe_allow_html=True)
