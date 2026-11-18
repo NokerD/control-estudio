@@ -29,6 +29,12 @@ def cargar_estilos(color_principal="#00e676", color_principal_rgba="rgba(0, 230,
             background-color: #0e1117 !important;
             color: #ffffff !important;
         }}
+
+        div[data-testid="stMainBlockContainer"],
+        div[data-testid="stAppViewBlockContainer"],
+        .block-container {{
+            padding-top: 3rem !important;
+        }}
         
         html, body, [class*="css"] {{ font-size: 18px !important; }}
         h1 {{ font-size: 2.5rem !important; }}
@@ -70,6 +76,44 @@ def cargar_estilos(color_principal="#00e676", color_principal_rgba="rgba(0, 230,
         .heatmap-cell:hover {{
             filter: brightness(1.3);
             cursor: pointer;
+        }}
+
+        @keyframes progressBarLightSweep {{
+            0% {{ transform: translateX(-160%) skewX(-20deg); opacity: 0; }}
+            12% {{ transform: translateX(-160%) skewX(-20deg); opacity: 0; }}
+            20% {{ transform: translateX(-80%) skewX(-20deg); opacity: 0.6; }}
+            78% {{ transform: translateX(420%) skewX(-20deg); opacity: 0.6; }}
+            90%, 100% {{ transform: translateX(650%) skewX(-20deg); opacity: 0; }}
+        }}
+        .progress-light-sweep {{
+            position: relative;
+            overflow: hidden;
+            isolation: isolate;
+        }}
+        .progress-light-sweep::after {{
+            content: "";
+            position: absolute;
+            top: -55%;
+            bottom: -55%;
+            left: -28%;
+            width: 24%;
+            border-radius: inherit;
+            background: linear-gradient(
+                100deg,
+                transparent 15%,
+                rgba(255, 255, 255, 0.95) 50%,
+                transparent 85%
+            );
+            transform: translateX(-160%) skewX(-20deg);
+            opacity: 0;
+            animation: progressBarLightSweep 5.4s linear infinite;
+            pointer-events: none;
+            z-index: 2;
+        }}
+        @media (prefers-reduced-motion: reduce) {{
+            .progress-light-sweep::after {{
+                animation: none !important;
+            }}
         }}
 
         .record-grid {{
@@ -397,11 +441,18 @@ def get_day_config(target_date=None):
 # ------------------ CARGA UNIFICADA DE DATOS ------------------
 @st.cache_data()
 def cargar_datos_unificados(fecha_str):
-    cfg = get_day_config()
+    target_date = datetime.strptime(fecha_str, "%Y-%m-%d").date()
+    cfg = get_day_config(target_date)
     USERS_LOCAL = cfg["USERS"]
     
     all_ranges = []
-    mapa_indices = {"materias": {}, "objs": {}, "hist_facu": None, "hist_ivan": None}
+    mapa_indices = {
+        "materias": {},
+        "objs": {},
+        "hist_facu": None,
+        "hist_ivan": None,
+        "tiempos_ultimos_7_dias": {},
+    }
     idx = 0
     
     for user, materias in USERS_LOCAL.items():
@@ -412,8 +463,23 @@ def cargar_datos_unificados(fecha_str):
     all_ranges.append(RANGO_OBJ_FACU); mapa_indices["objs"]["Facundo"] = idx; idx += 1
     all_ranges.append(RANGO_OBJ_IVAN); mapa_indices["objs"]["Iván"] = idx; idx += 1
 
+    fechas_ultimos_7_dias = [
+        target_date - timedelta(days=desfase)
+        for desfase in range(6, -1, -1)
+        if target_date - timedelta(days=desfase) >= FECHA_BASE
+    ]
+    for fecha in fechas_ultimos_7_dias:
+        cfg_fecha = get_day_config(fecha)
+        for usuario, materias in cfg_fecha["USERS"].items():
+            for materia, info in materias.items():
+                mapa_indices["tiempos_ultimos_7_dias"].setdefault(
+                    usuario, {}
+                ).setdefault(materia, [])
+                all_ranges.append(info["time"])
+                mapa_indices["tiempos_ultimos_7_dias"][usuario][materia].append(idx)
+                idx += 1
+
     # RANGOS PARA MAPEAR HISTORIAL POR FECHAS (COLUMNAS A HASTA G)
-    target_date = datetime.strptime(fecha_str, "%Y-%m-%d").date()
     delta_today = (target_date - FECHA_BASE).days
 
     row_end_facu = FILA_BASE2 + delta_today
@@ -496,6 +562,16 @@ def cargar_datos_unificados(fecha_str):
         "Iván": parse_float_or_zero(get_val(mapa_indices["objs"]["Iván"]))
     }
 
+    tiempos_ultimos_7_dias = {}
+    for usuario, materias in mapa_indices["tiempos_ultimos_7_dias"].items():
+        tiempos_ultimos_7_dias[usuario] = {}
+        for materia, indices in materias.items():
+            total_materia = sum(
+                parse_time_cell_to_seconds(get_val(indice))
+                for indice in indices
+            )
+            tiempos_ultimos_7_dias[usuario][materia] = total_materia
+
     hist_facu_idx = mapa_indices["hist_facu"]
     hist_ivan_idx = mapa_indices["hist_ivan"]
     hist_facu_vals = get_hist_by_date(hist_facu_idx, target_date)
@@ -528,6 +604,7 @@ def cargar_datos_unificados(fecha_str):
         "hist_ivan": hist_ivan_vals,
         "historial_diario_facu": historial_diario_facu,
         "historial_diario_ivan": historial_diario_ivan,
+        "tiempos_ultimos_7_dias": tiempos_ultimos_7_dias,
     }
 
 def batch_write(updates):
@@ -553,6 +630,7 @@ def start_materia_callback(usuario, materia):
         batch_write(updates)
         st.session_state["materia_activa"] = materia
         st.session_state["inicio_dt"] = parse_datetime(now_str)
+        st.session_state["selector_materia_rapido"] = materia
     except Exception as e:
         st.error(f"start_materia error: {e}")
     finally:
@@ -616,9 +694,32 @@ def stop_materia_callback(usuario, materia):
         batch_write(updates)
         st.session_state["materia_activa"] = None
         st.session_state["inicio_dt"] = None
+        st.session_state["selector_materia_rapido"] = "Apagado"
     except Exception as e:
         st.error(f"stop_materia error: {e}")
     finally:
+        pedir_rerun()
+
+def seleccionar_materia_rapida_callback(usuario, materias_por_opcion):
+    """Inicia, cambia o apaga la materia desde el slider."""
+    seleccion = st.session_state.get("selector_materia_rapido", "Apagado")
+    materia_destino = materias_por_opcion.get(seleccion)
+    materia_origen = st.session_state.get("materia_activa")
+
+    if materia_destino == materia_origen:
+        return
+
+    if materia_origen is not None:
+        stop_materia_callback(usuario, materia_origen)
+        if st.session_state.get("materia_activa") is not None:
+            st.session_state["selector_materia_rapido"] = materia_origen
+            pedir_rerun()
+            return
+
+    if materia_destino is not None:
+        start_materia_callback(usuario, materia_destino)
+    else:
+        st.session_state["selector_materia_rapido"] = "Apagado"
         pedir_rerun()
 
 def main():
@@ -729,6 +830,30 @@ def main():
     tiempo_anadido_seg = 0
     if usuario_estudiando and inicio_dt is not None:
         tiempo_anadido_seg = int((_argentina_now_global() - inicio_dt).total_seconds())
+
+    ahora_argentina = _argentina_now_global()
+    inicio_ventana_7_dias = datetime.combine(
+        ahora_argentina.date() - timedelta(days=6), dt_time.min
+    ).replace(tzinfo=ahora_argentina.tzinfo)
+    tiempos_7_dias = dict(
+        datos_globales["tiempos_ultimos_7_dias"].get(USUARIO_ACTUAL, {})
+    )
+    if usuario_estudiando and inicio_dt is not None and materia_en_curso is not None:
+        inicio_a_contar = max(inicio_dt, inicio_ventana_7_dias)
+        tiempos_7_dias[materia_en_curso] = tiempos_7_dias.get(materia_en_curso, 0) + max(
+            0, int((ahora_argentina - inicio_a_contar).total_seconds())
+        )
+
+    materias_ordenadas = sorted(
+        USERS_LOCAL[USUARIO_ACTUAL],
+        key=lambda materia: tiempos_7_dias.get(materia, 0),
+        reverse=True,
+    )
+    materias_por_opcion_slider = {"Apagado": None}
+    materias_por_opcion_slider.update(
+        {materia: materia for materia in materias_ordenadas}
+    )
+    opciones_slider = ["Apagado", *materias_ordenadas]
 
     # --- SUMAR TODOS LOS TIEMPOS DE LAS MATERIAS ---
     total_segs = 0
@@ -849,7 +974,7 @@ def main():
                 </div>
                 <div style="width: 100%; font-size: 2.2rem; font-weight: bold; color: #fff; line-height: 1;">{total_hms}</div>
                 <div style="width:100%; background-color:#333; border-radius:10px; height:12px; margin: 15px 0;">
-                    <div style="width:{progreso_pct}%; background-color:{COLOR_PRINCIPAL}; height:100%; border-radius:10px; transition: width 0.5s;"></div>
+                    <div class="progress-light-sweep" style="width:{progreso_pct}%; background-color:{COLOR_PRINCIPAL}; height:100%; border-radius:10px; transition: width 0.5s;"></div>
                 </div>
                 <div style="display:flex; justify-content:space-between; color:#888;">
                     {hora_fin_html}
@@ -946,6 +1071,46 @@ def main():
                 </div>
             """, unsafe_allow_html=True)
             st.markdown("<div style='height:1rem;'></div>", unsafe_allow_html=True)
+
+        materia_seleccionada_slider = (
+            materia_en_curso
+            if materia_en_curso in materias_por_opcion_slider.values()
+            else "Apagado"
+        )
+        st.session_state["selector_materia_rapido"] = materia_seleccionada_slider
+        indice_slider = opciones_slider.index(materia_seleccionada_slider)
+        progreso_slider_pct = (
+            round(indice_slider * 100 / (len(opciones_slider) - 1))
+            if len(opciones_slider) > 1
+            else 0
+        )
+        st.markdown(
+            f"""
+            <style>
+            div[data-testid="stSlider"] .react-aria-SliderTrack > :first-child,
+            div[data-testid="stSlider"] [class*="e23vpic5"] {{
+                background: linear-gradient(
+                    to right,
+                    #454545 0%,
+                    {COLOR_PRINCIPAL} 0%,
+                    {COLOR_PRINCIPAL} {progreso_slider_pct}%,
+                    #454545 {progreso_slider_pct}%
+                ) !important;
+                height: 10px !important;
+                border-radius: 999px !important;
+            }}
+            </style>
+            """,
+            unsafe_allow_html=True,
+        )
+        st.select_slider(
+            "Materia",
+            options=opciones_slider,
+            key="selector_materia_rapido",
+            label_visibility="collapsed",
+            on_change=seleccionar_materia_rapida_callback,
+            args=(USUARIO_ACTUAL, materias_por_opcion_slider),
+        )
 
         if usuario_estudiando:
             if st.button("🔄 Actualizar", use_container_width=True):
