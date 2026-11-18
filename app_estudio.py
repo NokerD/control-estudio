@@ -39,12 +39,20 @@ def cargar_estilos(color_principal="#00e676", color_principal_rgba="rgba(0, 230,
             --primary-color: {color_principal} !important;
             --st-primary-color: {color_principal} !important;
         }}
+        .st-key-selector_materia_rapido .react-aria-SliderThumb,
+        .st-key-selector_materia_rapido [class*="e23vpic3"],
         div[data-testid="stSlider"] .react-aria-SliderThumb,
         div[data-testid="stSlider"] [class*="e23vpic3"] {{
+            background: {color_principal} !important;
             background-color: {color_principal} !important;
             border-color: {color_principal} !important;
+            width: 24px !important;
+            height: 24px !important;
         }}
-        div[data-testid="stSliderThumbValue"] {{
+        .st-key-selector_materia_rapido [data-testid="stSliderThumbValue"],
+        .st-key-selector_materia_rapido [data-testid="stSliderThumbValue"] *,
+        div[data-testid="stSliderThumbValue"],
+        div[data-testid="stSliderThumbValue"] * {{
             color: {color_principal} !important;
         }}
 
@@ -1110,10 +1118,15 @@ def main():
         st.markdown(
             f"""
             <style>
+            .st-key-selector_materia_rapido .react-aria-SliderTrack,
             div[data-testid="stSlider"] .react-aria-SliderTrack {{
-                height: 14px !important;
+                height: 10px !important;
+                min-height: 10px !important;
                 border-radius: 999px !important;
+                background-color: #454545 !important;
             }}
+            .st-key-selector_materia_rapido .react-aria-SliderTrack > :first-child,
+            .st-key-selector_materia_rapido [class*="e23vpic5"],
             div[data-testid="stSlider"] .react-aria-SliderTrack > :first-child,
             div[data-testid="stSlider"] [class*="e23vpic5"] {{
                 background: linear-gradient(
@@ -1123,7 +1136,8 @@ def main():
                     {COLOR_PRINCIPAL} {progreso_slider_pct}%,
                     #454545 {progreso_slider_pct}%
                 ) !important;
-                height: 14px !important;
+                height: 10px !important;
+                min-height: 10px !important;
                 border-radius: 999px !important;
             }}
             </style>
