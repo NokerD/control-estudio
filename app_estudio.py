@@ -2,7 +2,6 @@ import re
 import json
 import time
 import requests
-import markdown
 from datetime import datetime, date, timedelta, time as dt_time
 import streamlit as st
 from google.oauth2 import service_account
@@ -35,7 +34,20 @@ def cargar_estilos(color_principal="#00e676", color_principal_rgba="rgba(0, 230,
         .block-container {{
             padding-top: 3rem !important;
         }}
-        
+
+        .st-key-selector_materia_rapido {{
+            --primary-color: {color_principal} !important;
+            --st-primary-color: {color_principal} !important;
+        }}
+        div[data-testid="stSlider"] .react-aria-SliderThumb,
+        div[data-testid="stSlider"] [class*="e23vpic3"] {{
+            background-color: {color_principal} !important;
+            border-color: {color_principal} !important;
+        }}
+        div[data-testid="stSliderThumbValue"] {{
+            color: {color_principal} !important;
+        }}
+
         html, body, [class*="css"] {{ font-size: 18px !important; }}
         h1 {{ font-size: 2.5rem !important; }}
         h2 {{ font-size: 2rem !important; }}
@@ -1098,6 +1110,10 @@ def main():
         st.markdown(
             f"""
             <style>
+            div[data-testid="stSlider"] .react-aria-SliderTrack {{
+                height: 14px !important;
+                border-radius: 999px !important;
+            }}
             div[data-testid="stSlider"] .react-aria-SliderTrack > :first-child,
             div[data-testid="stSlider"] [class*="e23vpic5"] {{
                 background: linear-gradient(
@@ -1107,7 +1123,7 @@ def main():
                     {COLOR_PRINCIPAL} {progreso_slider_pct}%,
                     #454545 {progreso_slider_pct}%
                 ) !important;
-                height: 10px !important;
+                height: 14px !important;
                 border-radius: 999px !important;
             }}
             </style>
@@ -1128,24 +1144,6 @@ def main():
                 cargar_datos_unificados.clear()
                 st.rerun()
         
-        # --- TEXTO MOTIVACIONAL ---
-        md_content = st.secrets["facundo_md"] if USUARIO_ACTUAL == "Facundo" else st.secrets["ivan_md"]
-        formatted_content = markdown.markdown(md_content)
-        
-        st.markdown(f"""
-        <div style="
-            font-style: italic;
-            font-size: 0.85rem;
-            color: #858585;
-            border-left: 2px solid #444;
-            padding-left: 12px;
-            line-height: 1.5;
-            margin-bottom: 20px;
-        ">
-            {formatted_content}
-        </div>
-        """, unsafe_allow_html=True)
-    
     # --- TARJETAS DE MATERIAS ---
     mis_materias = USERS_LOCAL[USUARIO_ACTUAL]
     for materia in mis_materias:
