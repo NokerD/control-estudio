@@ -1072,13 +1072,23 @@ def main():
             """, unsafe_allow_html=True)
             st.markdown("<div style='height:1rem;'></div>", unsafe_allow_html=True)
 
+        if "Apagado" not in opciones_slider:
+            opciones_slider.insert(0, "Apagado")
+            materias_por_opcion_slider["Apagado"] = None
+
         materia_seleccionada_slider = (
             materia_en_curso
             if materia_en_curso in materias_por_opcion_slider.values()
             else "Apagado"
         )
+        if materia_seleccionada_slider not in opciones_slider:
+            materia_seleccionada_slider = "Apagado"
         st.session_state["selector_materia_rapido"] = materia_seleccionada_slider
-        indice_slider = opciones_slider.index(materia_seleccionada_slider)
+        indice_slider = next(
+            (i for i, opcion in enumerate(opciones_slider)
+             if opcion == materia_seleccionada_slider),
+            0,
+        )
         progreso_slider_pct = (
             round(indice_slider * 100 / (len(opciones_slider) - 1))
             if len(opciones_slider) > 1
