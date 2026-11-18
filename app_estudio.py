@@ -41,6 +41,8 @@ def cargar_estilos(color_principal="#00e676", color_principal_rgba="rgba(0, 230,
         }}
         .st-key-selector_materia_rapido .react-aria-SliderThumb,
         .st-key-selector_materia_rapido [class*="e23vpic3"],
+        .stSlider .react-aria-SliderThumb,
+        .stSlider [class*="e23vpic3"],
         div[data-testid="stSlider"] .react-aria-SliderThumb,
         div[data-testid="stSlider"] [class*="e23vpic3"] {{
             background: {color_principal} !important;
@@ -51,6 +53,10 @@ def cargar_estilos(color_principal="#00e676", color_principal_rgba="rgba(0, 230,
         }}
         .st-key-selector_materia_rapido [data-testid="stSliderThumbValue"],
         .st-key-selector_materia_rapido [data-testid="stSliderThumbValue"] *,
+        .st-key-selector_materia_rapido [class*="e23vpic4"],
+        .stSlider [data-testid="stSliderThumbValue"],
+        .stSlider [data-testid="stSliderThumbValue"] *,
+        .stSlider [class*="e23vpic4"],
         div[data-testid="stSliderThumbValue"],
         div[data-testid="stSliderThumbValue"] * {{
             color: {color_principal} !important;
@@ -1119,14 +1125,14 @@ def main():
             f"""
             <style>
             .st-key-selector_materia_rapido .react-aria-SliderTrack,
+            .stSlider .react-aria-SliderTrack,
             div[data-testid="stSlider"] .react-aria-SliderTrack {{
-                height: 10px !important;
-                min-height: 10px !important;
                 border-radius: 999px !important;
-                background-color: #454545 !important;
             }}
             .st-key-selector_materia_rapido .react-aria-SliderTrack > :first-child,
             .st-key-selector_materia_rapido [class*="e23vpic5"],
+            .stSlider .react-aria-SliderTrack > :first-child,
+            .stSlider [class*="e23vpic5"],
             div[data-testid="stSlider"] .react-aria-SliderTrack > :first-child,
             div[data-testid="stSlider"] [class*="e23vpic5"] {{
                 background: linear-gradient(
